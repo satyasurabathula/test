@@ -1,0 +1,436 @@
+body{font-family: CiscoSansTT Regular;background-color: #fcfcfc;
+-webkit-text-size-adjust: 100%;-moz-text-size-adjust: none;-ms-text-size-adjust: 100%;}
+.heading-01,.heading-02,.event-reminders, label , label > h6{ font-family: CiscoSansTT Regular; font-weight: normal; color: #6a6b6c;}
+.heading-01 { font-size: 20px;}
+.heading-02 { font-size: 16px;}
+label { font-size: 13px;cursor:default;width:100%;}/*margin-top:7px;*/
+.integrations-block label { font-size: 14px;}
+label.date{ font-size: 12px;font-weight: 300}
+.events label,.event-reminders label { font-size: 16px;}
+.events-sub label{ font-size: 14px;font-weight: 300;margin: 16px 0;}
+.events-sub .checkbox:nth-child(odd){margin:0 135px 0 -14px;}
+.events-sub .checkbox:nth-child(2n) {float: left;margin:0 0 0 -73px}
+.text,.dropdown { font-family: CiscoSansTT Regular; font-size: 14px; font-weight: 300; color: #aeaeaf;}
+.button { font-family: CiscoSansTT Regular;font-size: 16px;font-weight:300;color: #ffffff;border-radius: 2px;background-color:#858688;}
+#loading-block{background-color: #ffffff;box-shadow: 0 1px 2px 0 rgba(40, 40, 40, 0.25), inset 0 1px 0 0 rgba(235, 235, 236, 0.5);width: 600px;object-fit: contain;height: 285px;width: 423px;}/*changed*/
+.loading {margin-bottom: 28px;margin-left: 167px;margin-top: 28px;}/*changed*/
+.success-loading { margin-bottom: 21px; margin-left: 167px; margin-top: 25px;}/*class is newly added*/
+.loading-first-block,.success-integration-first-block,.success-integration-note-block {font-family: CiscoSansTT Regular;font-size: 14px;font-weight: 300;text-align: center;color: #6a6b6c;}
+.loading-second-block {font-family: CiscoSansTT Regular;font-size: 12px;font-weight: 300;text-align: center;color: #6a6b6c;margin-top: 4px;}/*margin-top newly added*/
+.loading-bar {height: 2.5px;margin: 37px 33px 54px 32px;position: relative;overflow: hidden;background-color: #ffffff;}/*margin newly added*/
+.loading-background {display: block;position: absolute;content: "";left: -200px;width: 143.3px;height: 2.5px;background-color: #049fd9;animation: myloading 2s linear infinite;-webkit-animation:myloading 2s linear infinite;}
+@keyframes myloading {from {right: 30%;} to {left: 100%;}}
+@-webkit-keyframes myloading {from {left: -200px;} to {left: 500px;}}/* for safari, crome and opera */
+.success-integration-second-block {margin-left: 68px;margin-top: 17px;}/*changed*/
+/*.success-integration-first-block { margin-left: 7%;} *//*removed*/
+.events input[type="checkbox"] { position: relative; margin:0 0.5rem 0 0;width: 0.85rem; height: 0.85rem;}
+#add-config { padding: 0.6rem 1.8rem;margin-right:0;}
+#remove-all-config { padding: 0.6rem 1.8rem;}
+.integrations button{float:right;margin:0 0.5rem 0 0;}
+#remove-all-config{display:none;}
+#success-integration , #same-configuration{background: #ffffff;box-shadow: 0 1px 2px 0 rgba(40, 40, 40, 0.25), inset 0 1px 0 0 rgba(235, 235, 236, 0.5);width: 600px;height: 278px;object-fit: contain; width: 423px;padding:0 28px 0 28px;}/*changed (padding added 09/09)*/ 
+.cross-mark:hover{float:right;background-color: #f5f5f6  ;}
+.close-button {background-color: #ffffff;min-width: 1rem;padding: 0;right: -0.5rem;top: -1rem;}
+.close-button:hover{background-color: #ffffff;}
+.cross-mark {cursor: pointer;margin: 0.3rem 1rem 0 0; padding: 0.8125rem 1rem 0.625rem;float:right;background: transparent url("../images/cross_mark.png") no-repeat scroll right center;background-size:90%}/*crossmark image*/
+/*.integration-details img {float:left;width:56px;height:56px;margin:0.5rem 0.5rem 0.5rem 0;}change*/
+.integration-details img {float:left;width:56px;height:56px;margin: 8px 22px 8px 0;;}
+.integration-details .columns {float:left;}
+.integrations .edit-config {margin:1rem 0.5rem 0 0;padding: 7px 0.5px 0;float:right; font-family: CiscoSansTT Regular;font-size: 14px;font-weight: 300;text-align: center;color: #6a6b6c;}
+.integrations .remove-config{margin:1.5rem 0 0 0;}
+.cross-mark.remove-config:hover{background-color:#ffffff;}/*Background color white when hover the mouse on cross mark*/
+.integrations .edit-config:hover{color:#049fd9;}/*background color for Edit text when hover the mouse*/
+.secondary.button{border-radius: 2px;background-color: #049fd9;}
+.button:hover{background-color: #858688;}
+.has-tip{border-bottom:0;position: absolute;}/* To remove the border under the tooltip*/
+/*.dropdown{float: left !important;border-radius: 2px;background-color: #ffffff;border: solid 1px #d7d7d8;}-change2*/
+.dropdown{float: left !important;border-radius: 2px;background-color: #ffffff;border: solid 1px #d7d7d8;width: 250px !important;padding-right:32px;} 
+/*.dropdown:hover{background-color: #ffffff;} change1*/
+.dropdown:hover{background-color: #ffffff;border-color:#0393C9;}/*set border-color on hover*/
+/*.tool-tip {background: transparent url("../images/tooltip.png") no-repeat scroll center center;background-size:50%;cursor: pointer;padding: 0rem 1rem 1rem;} change1*//*tooltip image*/
+.tool-tip {background: transparent url("../images/tooltip.png") no-repeat scroll center center;background-size:50%;cursor: pointer;padding: 1rem 1rem 1rem;}
+#tooltip{line-height: 35px;margin: 0 0 0 10px;}
+/*padding top*/
+.tooltip{ border-radius: 2px !important;background-color: #aeaeaf !important;box-shadow: 0 1px 3px 0 rgba(40, 40, 40, 0.25) !important;}
+.tooltip > .nub {border-color: transparent transparent #aeaeaf transparent !important;}
+hr{opacity: 0.4; border: inset 1px #979797;}/*horizontal bar border style*/
+.integrations hr{opacity: 0.25;margin-bottom:0px;}
+/*.instance-background{padding:0.5rem 0;}change*/
+.instance-list-block .instance-background {padding: 16px 0px 16px 16px;}
+.instance-background:hover{background-color:#ffffff !important;}/*background color white when hover the created instance*/
+input[type=checkbox] {opacity: 0;position: absolute;}/* hide the default checkbox*/
+input[type="text"],input[type="text"][readonly],textarea[readonly]{background-color:#fcfcfc;}
+/*.edit-remove-icons {margin:0 3rem 0 0;} change */
+.edit-remove-icons,.github-edit-remove-icons {margin:0 1rem 0 0;}/* left-margin for edit button and crossmark */
+.config-name> label{font-family: CiscoSansTT Regular;font-size: 14px;font-weight: normal; color:#6a6b6c;}
+select {background: #ffffff url("../images/down-arrow.png") no-repeat scroll 93% center !important;cursor:pointer;background-size:12px !important}
+/*.custom-select {-moz-user-select: none;background-color: #ffffff !important;border: solid 1px #d7d7d8 !important; border-radius: 2px!important;position: relative !important;width:100% !important;font-family: CiscoSansTT Regular !important;
+font-size: 10px !important;font-weight: 300 !important;color: #6a6b6c !important;}*//*custom-css removed*/
+/*.custom-select{float:left;background: #ffffff url("../images/down-arrow.png") no-repeat scroll 93% center  !important;cursor:pointer;background-size:12px !important} *//* / 12px auto *//*custom-css removed*/
+/*.custom-select span {color: #aeaeaf;  margin-top: -3px;}*//*slected room color*//*custom-css removed*/
+/*.custom-select a{box-shadow:none;width:100% !important;}
+.custom-select.custom-select-open a,.custom-select.custom-select-open input{width: 98% !important;}*//*custom-css removed
+.custom-select.custom-select-open input{margin:2px 2px 0;background: #ffffff url("../images/search.png") no-repeat scroll 2% center  !important;cursor:pointer;padding-left:25px;border: 0.7px solid #0387b8;width: 233px; background-size:5% !important} *//* / 5% auto*//*custom-css removed*/
+.mobile-block{display:none;}
+/*.text-file{border: 1px solid #aeaeaf;margin: 1rem 0rem 1rem 0rem;width:100%} change1*/
+.text-file{font-family: CiscoSansTT Regular;border: 1px solid #aeaeaf;margin: 2rem 0rem 1rem 0rem;width:93%}/*margin top and width*/
+object{width:100%;}
+textarea{border:medium none !important;resize:none;}
+.tooltip.right::before {border-color: transparent #aeaeaf transparent transparent;}
+#issuestatus {color: #aeaeaf;}
+#sobject { color: #aeaeaf;}
+.integration-app::before, .integration-app::after {content: " ";display: table;clear:both;}
+/*.authenticted-block {font-family: .AppleSystemUIFont;font-size: 16px;font-weight: normal;color: #6a6b6c;margin: 0 0 0.5rem 0.5rem;display:none;}-change2*/
+.authenticted-block {font-family: CiscoSansTT Regular;font-size: 16px;font-weight: normal;color: #6a6b6c;margin: 0 0 20px 10px;display:none;}
+/*.custom-select.custom-select-open div div li:first-child {display: none !important;}*/ /*custom-css removed*/
+.edit-config-info,.edit-roomconfig-info,.edit-itemconfig-info,.edit-itemconfig1-info,.edit-columnconfig-info,
+.edit-subfolderconfig-info,.edit-teamconfig-info,.edit-projectsconfig-info{background-color: #eeeeee;margin: 0 0 16px;}
+.info-icon{ background: url("../images/info-icon.png") no-repeat scroll 50%  center !important;background-size:32px !important;display: inline-block;margin: 0 0.5rem 0 0;width: 20px;}
+.closearrow{background: url("../images/closearrow.png") no-repeat scroll 50%  center !important;background-size:32px !important;}
+.closearrow:hover{cursor:pointer;}
+.expandarrow{background: url("../images/expandarrow.png") no-repeat scroll 50% center !important; background-size:32px !important;}
+.expandarrow:hover{cursor:pointer;}
+#expand-close,#expand-close-config,#add-org-expand-close,#note-permission-expand-close,#switch-unauth-expand-close,#add-auth-note-expand-close {display: inline-block;margin: 0 0.5rem 0 0;width: 20px;}
+.ms-options-wrap > button {background: #ffffff url("../images/down-arrow.png") no-repeat scroll 93% center / 12px auto !important;}
+table.setup_data {width:80%}
+table.setup_data tr th { border:1px solid}
+table.setup_data tr td { border:1px solid}
+ul,li { margin:0; padding:0; list-style:none;}
+/*.ms-options-wrap > .ms-options > ul input[type="checkbox"] {left: 0;margin-right: 10px;opacity: 1;position: relative;top: 3px;height: 15px !important;*/
+.ms-options-wrap > .ms-options > ul input[type="checkbox"] {left: 0;margin-right: 10px;opacity: 1;position: relative !important;top: 3px;height: 15px !important;
+width: 15px !important;}
+/*.ms-options-wrap > .ms-options > ul > li.optgroup .label {display: none;}*/
+.ms-options-wrap > .ms-options > ul > li.optgroup .label {display: none !important;}
+.ms-options {min-height: 100px !important;}
+.ms-options-wrap > button::after {border-style:none;}
+.ms-options-wrap > button {border: 1px solid #d7d7d8;border-radius: 2px;height: 36px; overflow: hidden;text-overflow: ellipsis;}/*text align inside dropdown*/
+.ms-options-wrap > .ms-options > ul li.selected label, .ms-options-wrap > .ms-options > ul label:hover {background-color: #ffffff;}
+.tooltip {padding:0.5rem;}
+.events input {z-index: -1;}
+/*.spark-config-block{margin:0.5rem 0 0}*/
+.spark-config-block{margin:3.5rem 0.5rem 0rem;border-top: 1px solid #979797;padding: 30px 0 0;}/*change2*/
+.sub-config-block {margin:0 0 1.5rem;} 
+.sub-setup-block {margin:0 0 1.5rem;}
+.spark-config-block .sub-config-block {margin:0 0 1.5rem -1.3rem;}
+.spark-config-block .heading-01{margin:0 0 2.2rem -0.5rem;}
+/*.app-config-block .heading-01{margin:0 0 1.5rem;}*/ 
+.app-setup-block {border-bottom: 1px solid #979797;margin: 0 0 1rem 0;padding: 0 0 3.5rem;}
+.config-info{margin:1.5rem 0 0;}
+#showSetup .sub-config-block:first-child, #showConfig .sub-config-block:first-child, #serverMonitoring .sub-config-block:first-child,#instructions-showSetup  .sub-config-block:first-child{margin: 1rem 0 1.5rem;}
+.app-config-block .heading-01, .app-setup-block .heading-01{margin:0 0 1.5rem;} 
+.app-config-block .sub-config-block:last-child, .app-setup-block .sub-config-block:last-child {margin: 0;}
+.integration-app {padding: 10px 50px 10px 0;}
+.remove-all-btn {display:none;}
+.instance-list-block .integration-details label{font-size: 14px}
+/*.instance-list-block .integration-details label {margin-bottom: 0; margin-top: 4px;line-height:19px;}*/
+.instance-list-block .integration-details label {margin-bottom: 0; margin-top: 4px;line-height:19px;padding-left: 55px;padding-right: 44px;}
+.instance-list-block .integration-details label.date {margin-top: 0;font-size: 12px;line-height:16px;}
+.integrations .add-config-block .columns {padding:0;}
+.integrations {display:none;}
+#integration-form{display:none;}
+/*#showSetup .sub-config-block img ,#showConfig .sub-config-block img{max-width: 700px;}*/
+.events-sub input[type="checkbox"] {display:none;}
+.events-sub .medium-12:nth-of-type(n+2) .checkbox label{margin:12px 0;}
+.events-sub .medium-12:last-of-type .checkbox label{margin:16px 0;}
+/* added on 12-08-2016 start*/
+/*.app-config-block .large-2.medium-2.columns.small-mobile { padding-left: 0;padding-top: 8px;}*/
+/* added on 12-08-2016 end*/
+/*.spark-config-block .large-10.medium-10.columns {border-top: 1px solid #979797;padding: 25px 0 0;}change2*/ 
+.notifications-block {margin-top: 0.6rem;}
+.edit-notifications-block{margin-top: 0.4rem;}
+.spark-config-block label,.app-config-block label.label-config,.hash-config .left,.twitteraccount-config .left{line-height:34px;vertical-align:middle;}
+.zendesk-domain-block label,.jive-domain-block label.label-config{line-height:31px;vertical-align:middle;}
+.zendesk-domain-block { margin-left: -8px;}
+.domain-btn {margin-left: 20%;}
+#loading-block,#success-integration,#same-configuration{ top: calc(100% - 500px) !important;position: fixed;margin-left: 145px;margin-bottom: 500px;}/*-webkit-margin-before:1274px;   top: 90% !important;margin-left: 20%;*/
+.multicheckbox-tooltip {  margin: 0 0 0 2px !important;}
+.reveal-overlay {background-color: hsla(0, 0%, 0%, 0);}
+#copy {float: right;font-size: 11px;padding: 1px;right: 8px;top: 34px;}
+.well-done-text{font-family: CiscoSansTT Regular;font-size: 16px;font-weight: 300;text-align: center;}/*margin-top removed*/
+/*.spark-icon{height:53px;width:53px;}changed*/
+.spark-icon{height:61px;width:61px;margin-left:-15px}/* changed height width from 53px 09/09*/
+.buttons-block {bottom: 32px;padding: 0;position: absolute; right: 30px;}/* added  class09/09*/
+#done-button { float: right;}/* added class 09/09*/
+.integration-config-block{margin-top:56px;}/* added class09/09*/
+.removenote{font-size:12px;}
+/*Google Calendar*/
+.event-day-label-config {line-height: 34px;margin-left: 0px;}
+.event-day-time-label-config {line-height: 34px; margin-left: 10px !important;}
+.event-reminders {margin-top:23px;}
+.events.event-notifications{margin-top:15px;} 
+.event-reminders-block{margin-top:8px;}
+#post-day-reminders {right: 13%;}
+#post-time-reminders { width: 16% !important;} 
+.event-reminders-block .columns.checkbox {margin: 0 0 0 -30px;}
+.post-allday-remainders {margin: 0 30px 0 0;}
+.post-all-day-reminders-left{ margin-left:-31px}/* added for spacing issue */ 
+.day-of-at {width: 40px;}
+.day-of {    width: 110px;}
+.utc-time-txt {    margin-left: 2px;    right: 33px;    width: 265px;}
+.post-all-day-reminders-left .label-config {    line-height: 22px !important;}
+/*#time-zone { margin-left: -53px;}*/
+/*Asana*/
+.project-list{padding-top:15px;}
+.asana-sub-list {margin: 0 0 1rem;}
+#organization.dropdown, #team.dropdown, #projects.dropdown {padding-left: 6px;}
+.settings-loading,.items-loading,.subitems-loading { background: transparent url("../images/loading.gif") no-repeat scroll right center / 100% auto; float: right; height: 40px; width: 30px; -webkit-margin-end: -30px}
+.rooms-loading{background: transparent url("../images/loading.gif") no-repeat scroll right center / 100% auto; float: right; height: 40px; margin: 0 20px 0 0; width: 30px;float: left !important;margin: 0 0 0 36px !important;}
+/*.row.instance-loading-block {padding: 50px;}*/
+.instances-loading {background: transparent url("../images/loading.gif") no-repeat scroll center top / 3% auto;}
+.instances-loading-text { text-align: center;}
+.chk-label label{font-size:16px;}
+.app-config-block .sub-config-block .heading-01 {margin-bottom: 31px;}
+.first.sub-config-block {margin-bottom: 3rem;}
+.app-config-block .items-config {left: -15px;}
+.app-config-block .events-config {left: -7px;}
+.dropdown-config {left: -8px;width: 335px;}
+.spark-config-block .sub-config-block:last-child {margin: 0 -1.5rem 1.5rem -1.3rem;}
+.asana-events-config{left:-25px;}
+.popup-blocked{right: 0.5rem; top: 0rem;}
+.hash-config {left: -11px;}
+/*Listinstance  edit-loading */
+.edit-loading {background: transparent url("../images/buffering.gif") no-repeat scroll right center / 100% auto; float: left !important;margin: 23px 0 0 76px !important;position:relative;width: 25px;}
+.no-config-msg{text-align:center;}
+.success-integration{height:300px !important;}
+.smartsheet-optional { margin-top: -14px;} 
+#post-time-reminders {width: 108px !important;} 
+.timezone-tip {margin-left: 95% !important;top: 1px;}
+.config-optional label{line-height:20px !important;}
+.ms-options-wrap > .ms-options > ul label {-webkit-margin-start: -20px !important;}
+.warning-msg { background-color: #f5a623;border-radius: 1%; color: #fff; padding: 2%;margin-bottom: 2%;}
+.warning-msg{display:none;}
+.domain-block{margin-top:-7px;}
+.zendesk-protocol{line-height: 34px;}
+.zendesk-domainName{line-height: 34px;}
+/* JIRA mockup styles */
+.towards-arrow{background: rgba(0, 0, 0, 0) url("../images/expandarrow.png") no-repeat scroll 50% center / 50px auto !important;float: left;margin: 0.3rem 0.5rem;width: 20px;}
+.remove-status{background: rgba(0, 0, 0, 0) url("../images/remove-status.png") no-repeat scroll 50% center / 50px auto !important;float: left;margin: 0.3rem 0.5rem;width: 20px;cursor:pointer;cursor:hand;}
+.multicheckbox-input-small-mobile{margin-left:-38px;}
+.jira-events-tooltip {left: 32%;position: absolute;margin: -4px 0 0 30px !important;}
+.customstatus-add-btn{ margin-left: 5%}
+.jira-statuschange-tooltip {margin: -2px 0 0 65px !important;}
+.other-event-text { margin: 0px;}
+.add-custom-type {margin-left: 36%;position: absolute; width: 41%;}
+.asana-items-loading{background: transparent url("../images/loading.gif") no-repeat scroll center top / 6% auto;height: 100%;}
+.asana-loading{height: 45px;width: 100%;margin-right: 14% !important;}
+.issuetypes > label {margin-left: -8%}
+.issuetypes {margin-left: 3%;}
+.add-custom-type>div>span#tooltip {-webkit-margin-start: 80% !important;}
+.github-links {margin-left:20px;margin-bottom:20px;}
+#github-showSetup{margin-left:30px;}
+.unauth-form {margin-left: 8px;}
+.github-instructions {margin-bottom: 10px;}
+.note-on-permission { margin-left: -5px;}
+.github.revoke.permission, .switch-unauth.sub-config-block{margin-left:10px;}
+.github.revoke.lastchild{margin-left:8px;}
+.github-auth-add{margin-left:0.15%;}
+.integrationAuthMsg{ margin-bottom: 19px;}
+.github-add-config {margin-bottom: 70px !important;}
+.github-add-config-btn {float: right;margin-top: -5px;width: 20%;}
+.github-add-config-text {float: left;width: 80%;}
+.github-add-auth {width: 100%;}
+.auth-text {width: 85%;float: left;}
+.github-add-btn {width: 15%;float: right;}
+.unauth-nonauth-link { margin-top: 12% !important;}
+.marketo-auth-submit{margin-top:10px;}
+.same-config-text{margin-top:20%;}
+#remove-integration-popup{margin-left:50px;position: fixed;margin-bottom: 500px;}
+.marketo-url-block {margin-top: -7px;line-height: 34px;}
+
+/*New Select Styles*/
+.select2-container--default .select2-results__option[aria-selected="true"] {background-color: #39f !important;color: white;}
+#select2-rooms-results li:first-child{display:none;}
+#select2-rooms-results .select2-results__message{display:block !important;}
+#select2-rooms-results li:hover{background-color:#66bbff;}
+.select2.select2-container .selection .select2-selection span {margin-top:4px;color: #aeaeaf;}
+.select2-container .select2-dropdown .select2-search input{width: 98% !important;height:26px;}
+.select2-container .select2-dropdown .select2-search input{margin:2px 2px 0;background: #ffffff url("../images/search.png") no-repeat scroll 2% center  !important;cursor:pointer;padding-left:25px;border: 0.7px solid #0387b8;width: 233px; background-size:5% !important}
+.select2-container .select2-selection--single{height:36px !important;}
+.select2-container--default .select2-selection--single {border: solid 1px #d7d7d8 !important;border-radius: 2px !important;font-family: CiscoSansTT Regular !important;
+font-size: 10px !important;font-weight: 300 !important;-moz-user-select: none;background-color: #ffffff !important;}
+.select2-container--default .select2-selection--single .select2-selection__arrow b { border-style: none !important;border-width: 0px !important;}
+.select2-selection__arrow { background: #ffffff url("../images/down-arrow.png") no-repeat scroll 93% center !important;background-size: 12px !important;margin-right: 8px;}
+.select2.select2-container{ width: 100% !important;}
+.select2-container--default .select2-results > .select2-results__options{max-height: 108px !important;}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  select, input { font-size: 16px !important; }
+}
+@media screen and (max-width: 650px) {
+	.edit-remove-icons,.github-edit-remove-icons {margin: -77px 0 0 0;}
+	#remove-all-config {padding:11px;margin-right: -15px;margin-top: -30px;}
+	.integration-details img {margin: 5px 8px 0 -15px;}
+	.integrations .remove-config {margin: 1.5rem -8px 0;}
+	#add-config {margin: -30px 8px;padding: 11px 0;}
+	#cancel-button{margin-left:35px;}
+	.dropdown{width:100% !important;}
+	.small-mobile {float: left;width:38px;margin-left:-10px;width: 80px;}
+	.input-small-mobile {float: right;width: 200px !important;margin-left: 14px;}/*select2 changed*/
+	.multicheckbox-input-small-mobile{float: right;width: 223px !important;}
+	.integration_name {width: 180px !important;}
+	/*.custom-select.custom-select-open input {background-color: #ffffff; border: 0.7px solid #0387b8;width: 150px;}*//*custom-css removed*/
+	.desktop-block{display:none;}
+	.mobile-block{display:block;}
+	#remove-integration-popup{height: 155px;left: 21px;min-height: 100px;overflow: hidden;top: 100px !important;width: 50%;border-radius: 4px;border: 1px solid #cacaca;}
+	.msg-labels {height: 100px;}
+	#loading-block,#success-integration,#same-configuration{border-radius: 4px;height: 210px;min-height: 100px;top: 20px;width: 88%;margin-left:19px;}/*left changed to mrgin-left & height changed*/
+	.loading {height: 50px;margin: 0rem 7rem -1rem;}
+	.success-loading {height: 50px; margin: 1rem 0rem -1rem 1rem;text-align: center;}/*new class added*/
+	.loading-bar {margin:1rem;}
+	#remove-integration-popup .mobile-block .option-buttons {border-top: 1px solid #aeaeaf;margin: 0 -1.5rem;}
+	.remove-popup-cancel {border-right: 1px solid #aeaeaf;float: left;height: 36px;padding: 0.5rem 2rem 0rem 3rem;width: 50%;}
+	.remove-popup-remove {float: right;padding: 0.5rem 2rem 0rem 3rem;width: 50%;}
+	.remove-popup-cancel > a {color: #6a6b6c;}
+	.remove-popup-remove > a {color: #6a6b6c;}
+	.text-file {font-family: CiscoSansTT Regular;margin: 2rem 1rem 1rem;width: 92%;}
+	.toggle-button{float:right;bottom:6px;}
+	/*tooltip in mobile view*/
+	.tooltip.top::before, .tooltip::before {border: -0.25rem inset;}
+	.tooltip.left::before {border-color: transparent  transparent transparent  #DCDCDC;}
+	#success-integration .buttons-block {bottom: 1rem;position: absolute;width: 90%;}
+	#success-integration .buttons-block  .button{float:right;}
+	/*#success-integration { left: 5%;}*//*removed*/
+	.ms-options-wrap > button {width: 168px !important;}
+	.tool-tip.servicenow{margin-top: -4rem;}
+	#showSetup .sub-config-block img ,#showConfig .sub-config-block img{max-width: 100%;}
+	.multicheckbox-tooltip {  margin: 0 0 0 30px !important;}
+	.edit-notifications-block{margin-left: 2.5rem;}
+	.spark-icon { height: 30px;width: 30px;}
+	.instances-loading {background: transparent url("../images/loading.gif") no-repeat scroll center top / 5% auto;}
+	.events-sub .checkbox:nth-child(2n) {float: left;margin:0 0 0 -14px}	
+	.spark-config-block .sub-config-block {margin: 0 0 1.5rem -1.3rem;width: 335px;}
+	.spark-config-block .sub-config-block:last-child {margin: 0 -1rem 1.5rem -1.3rem;}
+	.settings-loading,.items-loading {position: absolute;left: 115%} 
+	.rooms-loading{position: absolute;left: 100%} 
+	.dropdown-config {left: -8px;width: inherit;} 
+	.post-all-day-reminders-left .label-config { width: 115%;} 
+	#post-time-reminders {width: 108px !important;}  
+	.no-config-msg {margin-left: -5% !important;}
+	.posttimereminder { margin-left: 8px;}
+	.utc-blank {display: none;}
+	.utc-time-txt {margin-left: 2px; right: 4px; width: 265px;}
+	.add-config-block .config-name {width: 74%;}
+	.domain-btn {margin-left:1px;text-align: center;}
+	.domain-block {width: 100%;}
+	.protocol-block {margin-left: -8px;width: 20%;}
+	.zendesk-domainName-block {width: 49%;}
+	.jira-events-tooltip {margin: -4px 0 0 45px !important; position: absolute;}
+	.other-event-text { margin: -33px 0 0 37%; width: 62%;}
+	.ms-options-wrap > .ms-options{width:30%;}
+	.add-custom-type>div>span#tooltip {-webkit-margin-start: 90% !important;}
+	#loading-block,#success-integration,#same-configuration,#remove-integration-popup{ top: calc(100% - 300px) !important;position: fixed;margin-bottom: 500px;}
+	.unauth-nonauth-link { margin-top: 16% !important;}
+	.auth-text {width: 75%;}
+	.github-add-btn {width: 25%;}
+	#same-configuration .buttons-block{text-align:center;}
+	.same-config-text {margin-top: 10%;}
+	#remove-integration-popup{margin-left:100px;}
+	/*New Styles select2*/
+	.select2-container .select2-dropdown .select2-search input{background-size:10px !important;}
+}
+@media only screen and (min-device-width : 768px) and (max-device-width : 1024px) {
+	.edit-remove-icons,.github-edit-remove-icons {margin: -7px 0 0 0;} 
+	.settings-loading,.items-loading {position: absolute;left: 108%} 
+	.rooms-loading{position: absolute;left: 50%}  
+	.sub-config-block .step{width:10%;}
+	.step-text{width:90%;}
+	.customstatus-add-btn{ margin-left: 12%;}
+	.other-events-tooltip{ padding: 6% 0 0;}
+} 
+@media screen and (min-width: 640px) { 
+	.integration-config-block .large-4.medium-4.columns.left{width: 50%;}
+}
+@media screen and (max-width: 900px){ 
+	.sub-config-block .step{width:10%;}
+	.step-text{width:90%;}
+	.issuestatus{width:60%;}	
+}
+@media screen and (max-width: 850px){ 
+	.sub-config-block .step{width:13%;}
+	.step-text{width:87%;}
+		
+}
+@media screen and (max-width: 650px){ 
+	.sub-config-block .step{width:18%;}
+	.step-text{width:82%;}
+	.issuetypes{width:100%;}
+	.issuestatus{width:100%;}
+	.status-fields{ width: 33%;}
+	.jira-events-tooltip {left: 35%;}
+	.customstatus-add-div{ margin: 0 28% 0 0;}
+	.customstatus-add-btn { margin-left: 34%;}
+	.other-event-text {margin: 0; width: 35%;}
+	.issuetypes > label {margin-left: -3%;}
+	.issuetypes { margin-left: 1%;}
+}
+	
+@media screen and (max-width: 640px){ 
+	.integration-app {padding: 0;}
+	.customstatus-add-btn{ margin-left: 2%}
+	.other-event-text {margin: 0}
+	.other-events-tooltip {left: 92%;}
+	.other-event-text {margin: -33px 0 0 50% !important;width: 40%;}
+	.jira-events-tooltip {left: 50%;}
+	.ms-options-wrap > button {width: 40% !important;}
+	.ms-options-wrap > .ms-options {width: 40%;}
+	.add-custom-type {margin-left: 0;position: relative;width:46% !important;}
+}
+@media screen and (max-width: 430px){ 
+	.sub-config-block .step{width:100%;}
+	.step-text{width:100%;}
+	.spark-config-block .sub-config-block {width: 318px;}
+	.other-event-text { margin: -33px 0 0 55%; width: 50%;}
+	#remove-integration-popup{width:70%;}
+	.auth-text {width: 65%;}
+	.github-add-btn {width: 35%;}
+	.unauth-nonauth-link { margin-top: 35% !important;}
+	.github-add-config-btn {width: 30%;}
+	.github-add-config-text {width: 70%;}
+	#remove-integration-popup{margin-left:-6px;}
+}
+@media screen and (max-width: 360px) { 
+	.integration-config-block .button,#cancel-button {margin:0;}
+	.status-fields{ width: 31%;}
+	.jira-events-tooltip {left: 72%;}
+	.customstatus-add-btn{ margin-left: 4%}
+	.jira-statuschange-tooltip {margin: -2px 0 0 56px !important;}
+	.other-events-tooltip {left: 100%; margin-top: 17% !important;padding: 0;position:absolute;}
+	.other-event-text { margin: 13px 0 0 12% !important;width: 100% !important;}
+	.add-custom-type>div>span#tooltip {line-height: 35px;margin: 0 0 0 21px;}
+	.issuetypes {width: 169%;}
+	.add-custom-type{width:80% !important;}
+	.unauth-nonauth-link { margin-top: 45% !important;}
+	
+}
+@media screen and (max-width: 320px) {
+	.instances-loading {background: transparent url("../images/loading.gif") no-repeat scroll center top / 9% auto;}
+	.small-mobile {margin-left: 0;width: 100% !important;}
+	.spark-config-block .sub-config-block {width: 100% !important;}
+	.input-small-mobile {margin-left: 0;width: 100% !important;}
+	.integration-config-block .button, #cancel-button { margin: 4px;}
+	.zendesk-domainName-block {width: 39%;}
+	#remove-integration-popup {height:185px;}
+	.msg-labels {height: 130px;}
+	.status-fields{ width: 70%;}
+	.other-events-tooltip {left: 100%; margin-top: 20% !important;padding: 0;position:absolute;}
+	.customstatus-add-btn{ margin-left: -8px}
+}
+@media screen and (max-width: 273px) {
+	.other-events-tooltip {left: 100%; margin-top: 40% !important;padding: 0;position:absolute;}
+	.auth-text {width: 60%;}
+	.github-add-btn {width: 40%;}
+	.unauth-nonauth-link { margin-top: 70% !important;}
+}
+@media screen and (-webkit-min-device-pixel-ratio:0) { 
+	/*.custom-select{
+		font-size: 50px !important;
+	  }
+	.custom-select span {
+		position: absolute;
+		margin-top: -11px;
+	}
+	.custom-select a {
+		position: absolute;
+		margin-top: 9px;
+	}*/
+}
