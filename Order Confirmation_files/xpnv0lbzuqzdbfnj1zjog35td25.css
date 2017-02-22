@@ -1,0 +1,1094 @@
+a.xo-oc-bbl:hover,a.xo-oc-bbl:focus,.xo-oc-od a:hover *,.xo-oc-od a:focus *,.xo-h4d a:hover,.xo-h4d a:focus
+{
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=60)";
+    filter: alpha(opacity = 60);
+    filter: alpha(opacity = 60);
+    opacity: .6;
+    text-decoration: none;
+} 
+
+a.xo-oc-bbl,.xo-oc-od a *,.xo-h4d a  {
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=100)";
+    filter: alpha(opacity = 100);
+    filter: alpha(opacity = 100);
+    opacity: 1;
+    transition: opacity 1s linear;
+    -moz-transition: opacity .3s linear;
+    -webkit-transition: opacity .3s linear;
+    -o-transition: opacity .3s linear;
+}
+.xo-header{
+    width: 980px;
+    margin: 0 auto;
+}
+.xo-oc-dib{
+    display: inline-block;
+    width: 100%;
+}
+.xo-container {
+    width: 980px;
+    min-width: 980px;
+    margin: 0 auto;
+}
+.xo-dib {
+	display: inline-block;
+	width: 100%;
+}
+.xo-clrb{
+	clear: both;
+}
+
+.xo-sidebar {
+    float: right;
+    width: 321px;
+    padding-bottom: 30px;
+    margin-top: -59px;
+}
+
+.xo-oc-content {
+    float: left;
+    width: 627px;
+    padding: 0px 20px 20px 0px;
+}
+
+.xo-oc-content .order-banner{
+    margin-top: 15px;
+}
+
+.xo-print .xo-oc-content {
+    float: none;
+    width: 100%;
+    padding: 0px;
+}
+
+.xo-print .xo-oc-or {
+    border: 0px solid #fff;
+}
+
+.xo-print .xo-h4d {
+    background-color: #FFF;
+    padding: 10px 0px 10px 0px;
+    color: #333;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.xo-print .xo-oc-bbl {
+    display: none;
+}
+
+.xo-oc-slrc thead tr {
+    background-color: #F5F5F5;
+    text-align: left;
+    border: 1px solid #CCC;
+}
+
+.xo-oc-slrc th {
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.xo-oc-slrc .xo-ocp-slrtb {
+    width: 100%
+}
+
+.xo-oc-slrc table.xo-ocp-slrtb td {
+    width: 20%; 
+    text-align: left;
+}
+
+.xo-oc-slrc table.xo-ocp-slrtb td:first-child{    
+    width: 33%; 
+}
+
+.xo-oc-slrc table.xo-ocp-slrtb td:last-child{    
+    width: auto; 
+}
+
+
+.xo-ocp-slrtb td:first-child {
+    font-weight: 700;
+}
+.xo-ocp-slrtb img{
+    border: 0px none;
+    margin-right: 0px;
+    margin-left: 8px;
+    height: 12px;
+    vertical-align: middle;
+}
+.xo-ocp-slrtb img:first-child{
+    margin-left: 0px;    
+}
+
+.xo-oc-slrc .xo-ocp-slrtb td {
+    border: 0px none;
+    padding: 0px;
+    color: #666;
+}
+
+.xo-oc-slrc .xo-ocp-slrtb tr {
+    border: 0px none;
+}
+
+.xo-oc-slrc tbody td,.xo-oc-slrc tfoot td {
+    text-align: center;
+    padding: 10px;
+    vertical-align: top;
+}
+.xo-oc-slrc tfoot td {
+    text-align: left;
+}
+.xo-oc-slrc tbody td,.xo-oc-slrc tfoot {
+    line-height: 22px;
+    border-bottom: 1px solid #DDD;
+}
+
+.xo-oc-slrc tbody td:first-child {
+    text-align: left;
+    width: 430px;
+}
+
+.xo-oc-slrc tbody td.price{
+    text-align: right;
+}
+
+.xo-oc-slrc .xo-ocp-bttl {
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+    text-align: right;
+}
+
+.xo-oc-slrc table {
+    width: 100%;
+}
+
+.xo-oc-slrc tr {
+    border-left: 1px solid #DDD;
+    border-right: 1px solid #DDD;
+}
+
+.xo-oc-slrc b {
+    line-height: 22px;
+    font-weight: 700;
+}
+
+.xo-oc-slrc b span {
+    line-height: 22px;
+    font-weight: 300;
+    padding: 0px 5px;
+}
+
+.xo-ocp-itr div span,.xo-ocp-itr div a {
+    padding-right: 10px;
+    font-size: 12px;
+    color: #999;
+    line-height: 22px;
+}
+
+.xo-ocp-itr div a {
+    color: #333;
+}
+
+.xo-oc-slrc .price {
+    font-weight: 700;
+}
+
+.xo-oc-slrc .xprice {
+    text-decoration: line-through;
+    color: #666;
+}
+
+.xo-footer {
+    position: relative;
+    clear: both;
+}
+
+.xo-oc-msg {
+    padding-top:20px;
+    font-size: 26px;
+    width: 628px;
+}
+
+.xo-oc-msg .sm-su {
+    border-top: 0px none;
+    padding: 10px 0px;
+}
+
+.xo-oc-msg .sm-co {
+    border: 0px none;
+    box-shadow: none;
+    padding: 5px 0px;
+}
+
+.xo-oc-msg i.ical {
+    background-position: -198px -2px;
+    margin-right: 10px;
+}
+.xo-oc-msg i.icsu {
+    margin-right: 8px;
+    background-image: url('https://securepics.ebaystatic.com/aw/pics/in/xo/conformation/imgStripOCP2_120x120.png');
+    background-position: -88px -66px;
+    width: 32px;
+    height: 32px;
+    margin-top: 2px;
+}
+
+.xo-oc-msg .sm-co span {
+    font-size: 13px;
+    color: #666;
+    display: block;
+}
+
+div.xo-oc-vcd a {
+    font-size: 12px;
+    cursor: pointer;
+}
+
+div.xo-oc-vcd p {
+    margin-bottom: 9px;
+}
+.xo-oc-wnxt {
+    padding: 16px 0px;
+}
+
+.xo-oc-wnxt p {
+    font-size: 14px;
+    color: #666;
+    margin: 20px 20px 0px 0px;
+    line-height: 22px;
+    padding-left: 24px;
+}
+.xo-oc-wnxt p > b{
+    background-image: url('https://securepics.ebaystatic.com/aw/pics/in/xo/conformation/imgStripOCP2_120x120.png');
+    display: block;
+    background-position: -66px -2px;
+    position: absolute;
+    margin-left: -24px;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+}
+
+.xo-oc-wnxt .track-link > a{
+    text-decoration: none;
+    background-color: #0654ba;
+    color: #fff;
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 2px;
+}
+
+.xo-print .xo-oc-wnxt p{
+    font-size: 18px;
+}
+
+.xo-oc-wnxt h4 {
+    color: #333;
+    font-weight: 700;
+    font-size: 16px;
+    padding-left: 24px;
+}
+
+.xo-oc-tyf {
+    padding: 40px 0px;
+}
+
+.xo-oc-iyml {
+    padding: 20px 0px;
+}
+
+.xo-oc-tyf button {
+    margin-right: 20px;
+    padding: 2px 10px;
+}
+
+.xo-oc-tyf span {
+    float: left;
+    width: 100%;
+    font-size: 16px;
+    line-height: 18px;
+    font-weight: 700;
+    color: #666;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.xo-oc-tyf img {
+    vertical-align: middle;
+    height: 36px;
+    width: 105px;
+}
+
+.xo-oc-cntxt {
+    display: inline-block;
+    width: 100%;
+}
+
+.xo-oc-ritm li,.xo-oc-slrc li {
+    list-style-type: none
+}
+
+.xo-oc-iyml .xo-oc-cntr {
+    display: inline-block;
+    width: 100%;
+}
+
+.xo-oc-ritm {
+    margin: 30px 0px 0px 14px;
+    height: 100px;
+    width: 293px;
+    float: left;
+}
+
+.xo-oc-ritm img {
+    vertical-align: middle;
+}
+
+.xo-oc-ritm ul {
+    margin-left: 110px;
+}
+
+.xo-oc-iyml h4 {
+    color: #666;
+    font-size: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #DDD;
+    font-weight: 700;
+    padding-left: 10px;
+}
+
+.xo-oc-ritm li a {
+    padding-bottom: 10px;
+    display: block;
+}
+
+.xo-oc-ritm li span {
+    font-size: 16px;
+    color: #000;
+    font-weight: 700;
+}
+
+.xo-oc-or {
+    border: 10px solid #f5f5f5;
+}
+
+.xo-oc-od {
+    padding-bottom: 20px;
+}
+
+.xo-oc-od h4 {
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #666;
+    font-size: 16px;
+    width: 200px;
+}
+.xo-oc-od a:hover{
+    text-decoration: none;
+    color: #6998D5;    
+    transition: color 1s linear;
+    -moz-transition: color .3s linear;
+    -webkit-transition: color .3s linear;
+    -o-transition: color .3s linear;
+}
+.xo-oc-od > a {
+    font-weight: 700;
+    padding-left: 24px;
+    color: #0654BA;
+    cursor: pointer;
+}
+.xo-oc-od > a b,.xo-oc-od >a i,.xo-oc-od > a img{
+    background-image: url('https://securepics.ebaystatic.com/aw/pics/in/xo/conformation/imgStripOCP2_120x120.png');
+    background-repeat: no-repeat;
+    background-position: 0px 0px;
+    width: 22px;
+    height: 22px;
+    display: inline-block;
+    position: absolute;
+    margin-top: -4px;
+    margin-left: -24px;
+}
+
+.xo-oc-od > a img {
+    background-position: -52px -34px;
+    width: 120px;
+    height: 26px;
+    margin-top: -8px;
+    margin-left: -69px;
+}
+.xo-oc-od >a.xo-oc-cus{
+    padding-left: 54px;
+    float: right;
+    padding-right: 0px;
+}
+.xo-oc-od > a b{
+    background-position: -30px -1px;
+}
+
+.xo-h4d {
+    background-color: #F5F5F5;
+    padding: 10px 0px 10px 10px;
+    color: #888;
+    font-size: 16px;
+}
+
+.xo-xnt span {
+    color: #666;
+}
+
+.xo-xnt {
+    padding: 0px;
+}
+
+.xo-spb > p {
+    display: block;
+    line-height: 18px;
+    font-size: 14px;
+    color: #666;
+    text-transform: capitalize;
+}
+
+.xo-fb {
+    font-weight: 700;
+}
+
+.xo-bbl {
+
+}
+
+.xo-oc-slrc {
+    padding: 10px;
+}
+
+.xo-oc-slri {
+    margin-top: 20px;
+}
+.xo-oc-slri:first-child{
+    margin-top: 0px;
+}
+.xo-oc-odi {
+    margin: 20px 0px;
+    display: inline-block;
+    font-size: 12px;
+}
+
+.xo-oc-odi li {
+    border: 0px none;
+    line-height: 18px;
+    word-break: break-word;
+    display: inline-block;
+    width: 100%;
+}
+
+.xo-oc-odi img {
+    vertical-align: middle;
+}
+
+.xo-oc-odi .imgt,.xo-oc-ritm .imgt {
+    text-align: center;
+}
+
+.xo-oc-odi > ul {
+    margin-left: 86px;
+    min-height: 100px;
+}
+
+.xo-oc-odi p.xo-oc-edd {
+    margin-top: 10px;
+    font-style: italic;
+    color: #fff;
+    font-size: 12px;
+    padding: 5px;
+    background-color: #f18e00;
+    border-radius: 2px;
+}
+
+p.xo-oc-edd span {
+    color: #fff;
+    font-weight: 700;
+    padding-left: 10px;
+    word-wrap: break-word;
+    max-width: 45%;
+}
+.xo-oc-odi li > span {
+    max-width: 35%;
+    min-width: 35%;
+    word-wrap: break-word;
+    display: inline-block;
+}
+.xo-oc-odi li >div {
+    max-width: 65%;
+    word-wrap: break-word;
+    display: inline-block; 
+    vertical-align: top;
+}
+
+.xo-oc-odi span.ul {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.xo-oc-slri {
+    color: #666666;
+}
+
+.xo-oc-h50 {
+    height: 50px;
+}
+
+.xo-img-egban {
+    width: 321px;
+    height: 74px;
+    background-image: url('https://securepics.ebaystatic.com/aw/pics/in/xo/conformation/logoEG_321x74.png?e');
+    border: 0px none;
+}
+
+a.xo-oc-bbl {
+    background-image: url("https://securepics.ebaystatic.com/aw/pics/cmp/ds3/sprds3_9.png?e");
+    background-repeat: no-repeat;
+    background-position: -215px -408px;
+    background-color: transparent;
+    cursor: pointer;
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding: 8px 7px 7px 7px;
+    *padding: 0px 7px 0px 9px;
+    margin-left: 4px;
+}
+p.xo-oc-sp{
+    display: inline-block;
+    width: 101%;
+}
+
+.xo-print .xo-spb p.xo-oc-sp > span {width: 340px;}
+
+.xo-spb p.xo-oc-sp > span {
+    width: 190px;
+    display: block;
+    float: right;
+    text-align: right;
+}
+
+
+p.xo-oc-cpn,p.xo-oc-cpn span {
+    color: #209900
+}
+
+p.xo-oc-cpn label {
+    float: right;
+}
+
+p.xo-oc-cpx label {
+    float: right;
+}
+
+p.xo-oc-cpa label {
+    float: right;
+}
+
+p.xo-oc-cpa {
+    color: #333;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+    font-size: 14px;
+    margin-top: 4px;
+    font-weight: 700;
+}
+
+p.xo-oc-cpa span,p.xo-oc-cpa label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+}
+
+.xo-est-tim {
+    font-size: 12px;
+    line-height: 14px;
+    padding: 10px 16px;
+    width: auto;
+}
+
+.xo-est-tim p {
+    padding: 6px 0px;
+}
+
+.xo-oc-pay {
+    padding-bottom: 10px;
+    margin-top: 20px;
+    padding-top: 24px;
+    padding-left: 24px;
+}
+
+.xo-print .xo-oc-pay {
+    padding-left: 0px;
+    margin-top: 24px;
+}
+.xo-oc-dapd {
+    float: left;
+    width: 48%;
+}
+
+.xo-print .xo-oc-dapd > h2 i,.xo-print .xo-oc-dapd > h2 b,.xo-print .xo-oc-wnxt h4 i{
+    display: none;
+}
+.xo-print  .xo-oc-wnxt h4{
+    padding-left: 0px;
+}
+.xo-oc-dapd > h2 i,.xo-oc-dapd > h2 b,.xo-oc-wnxt h4 i{
+    background-image: url(https://securepics.ebaystatic.com/aw/pics/in/xo/conformation/imgStripOCP2_120x120.png);
+    display: block;
+    background-position: 0px -34px;
+    position: absolute;
+    margin-left: -24px;
+    width: 22px;
+    height: 28px;
+    margin-top: -6px;
+}
+.xo-oc-dapd > h2 b{
+    background-position: -24px -34px;
+    width: 28px;
+    margin-left: -34px;
+    margin-top: -9px;
+}
+.xo-oc-wnxt h4 i{
+    background-position: -101px 0px;
+    width: 19px;
+    height: 21px;
+    margin-top: -2px;
+}
+.xo-oc-dapd > h2{
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 16px;
+}
+.xo-oc-pay h1 {
+    color: #666666;
+    font-size: 16px;
+    font-weight: 700;
+    padding-bottom: 10px;
+}.xo-oc-wnxt
+
+.xo-oc-pay h2 {
+    color: #666666;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.xo-oc-smsalrt {
+    margin-top: 50px;
+    padding-left: 10px;
+}
+
+.xo-oc-h4 {
+    border-bottom: 1px dashed #BBBBBB;
+    margin-bottom: 15px;
+    padding-left: 15px;
+}
+
+.xo-oc-h4 p {
+    height: 24px;
+    color: #333;
+}
+
+.xo-oc-h4 p span {
+    color: #888;
+}
+
+p.xo-och4p {
+    font-size: 12px;
+    color: #888;
+}
+.xo-ocg-d {
+    background-color: #f5f5f5;
+    color: #666;
+    padding: 0px;
+    padding-left: 40px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    margin-top: 10px;
+}
+
+.xo-ocg-d h4 {
+    color: #666;
+    padding-bottom: 18px;
+    font-size: 18px;
+}
+
+.xo-ocg-i {
+    width: 100%;
+    height: 60px;
+    background-image: url('https://securepics.ebaystatic.com/aw/pics/in/xo/conformation/bgGuest_567x49.jpg?e');
+    background-repeat: no-repeat;
+}
+
+.xo-ocg-d label {
+    color: #333;
+    font-weight: 700;
+}
+
+.mpt-16 {
+    margin-top: 16px;
+}
+
+.xo-goc-b2>div {
+    width: 49%;
+    float: left;
+    padding-bottom: 16px;
+}
+
+.xo-goc-b2 {
+    display: inline-block;
+    width: 100%
+}
+
+.xo-goc-b2 p {
+    clear: both
+}
+
+.xo-goc-b2 a {
+    cursor: pointer
+}
+
+.xo-ocg-d .ed-dropdown>ul>li {
+    text-align: left;
+}
+
+.xo-goc-qst>div {
+    width: 457px;
+}
+
+.xo-goc-qst>button {
+    float: right;
+    margin-right: 20px;
+}
+
+.xo-goc-qst p {
+    padding-left: 32px;
+}
+.xo-goc-yel{
+    background-color: yellow;
+}
+.xo-oc-ppc,xo-oc-ppcx {
+    font-size: 18px;
+    margin-top: 8px;
+    color: #666;
+}
+
+.xo-oc-ppc > span{
+    color: #333;
+}
+.xo-oc-ppc > b{
+    color: #333;
+}
+.xo-oc-msg .sm-co p{
+    font-size: 1.30em;
+}
+.xo-oc-rec{
+    margin-bottom: 10px;
+    padding-left: 24px;
+    color: #666;
+}
+.xo-oc-pl20{
+    padding-left: 20px; 
+}
+a:active, a:link, .g-novisited a:visited{
+    color: #0654ba;
+}
+td.price{
+    text-align: right;
+}
+.xo-oc-slrc th:first-child{
+    width: auto;
+}
+.xo-oc-slrc th.xo-p-qty{
+    width: 50px;
+    text-align: center;
+}
+.xo-oc-slrc th.xo-p-rs{
+    width: 100px;
+    text-align: right;
+}
+.xo-oc-ic70 span{
+    width:70px; height:70px;
+}
+
+.xo-oc-ic70 >span > span{
+    line-height:70px;
+}
+.xo-oc-ic70 img{
+    max-width: 68px; max-height: 68px;margin-top: -2px;
+}
+.xo-oc-ic70 a{
+    display: inherit;
+}
+.xo-h4d a{
+    float: right;
+    margin-top: -2px;
+    cursor: pointer;
+}
+.xo-print .xo-oc-msg{
+    width: auto;
+    padding-top: 0px;
+}
+.xo-print .xo-oc-pl20{
+    padding: 0px;
+}
+.xo-oc-wnxt img{
+    vertical-align: middle;
+    margin-left: 2px;
+    width:150px;
+    height:19px;
+}
+.xo-print .xo-oc-wnxt img{
+    vertical-align: middle;
+    margin-left: -3px;
+}
+div.xo-oc-prnt{
+    text-align: center;
+    margin-bottom: 40px;
+    margin-top: 10px;
+}
+
+.xo-print .xo-oc-slrc {
+    padding: 10px 0px;
+}
+.xo-print .xo-oc-rec{
+    padding-left: 0px;
+}
+.xo-oc-emi{
+    padding-bottom: 0px;
+}
+.xo-oc-emi p{
+    font-size: 14px;
+    color: #999;
+    line-height: 24px;
+    padding-left: 14px;
+    margin:0px;
+    display: inline-block;
+    width: 100%;
+}
+.xo-oc-emi p > span {
+    width: 460px;
+    display: inline-block;
+    float: right;
+    color: #333;
+}
+
+.xo-print .xo-oc-emi p > span{
+    width: 780px;
+}
+.xo-print .xo-oc-emi p.xo-oc-emsg{
+    font-size: 14px
+}
+.xo-oc-emi p.xo-oc-emsg {
+    font-size: 12px;
+}
+#guestRegDiv{
+    margin-top: 24px;
+    border-top: 1px dashed #CCC;    
+    margin-bottom: -14px;
+}
+#overlayError{
+    font-size: 12px;
+    padding: 10px 0px;
+}
+#divRB li{
+    list-style-type: none;
+    padding: 5px 0px;
+}
+#personalizeDiv > input{
+    margin: 0px;
+    letter-spacing: 1px;
+}
+
+#personalizeDiv > button{
+    line-height: 18px;
+    margin-left: 10px;
+}
+#txtCName3{
+    background-color: #FFFFCC;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+#divRB {
+    margin-bottom: 10px;
+}
+#pageform .mi-er{
+    padding: 10px 20px 10px 0px;
+    font-size: 12px;
+
+}
+
+.xo-ocg-ssd{
+    padding: 15px 30px 15px 15px;
+    word-wrap: break-word;
+    font-size: 14px;
+    line-height: 18px;
+    color: #333;
+}
+
+.xo-ocg-ssd > p{
+    padding-bottom: 10px;
+}
+
+.xo-ocg-ssd > p:last-child{
+    padding-bottom: 0px;
+}
+
+#userId{
+    text-transform: lowercase;
+}
+.xo-oc-mt20{
+    margin-top: 10px;
+}
+
+
+
+
+@media print {
+    div.xo-oc-prnt{
+        display:none;
+    }
+    .icsu{
+        display: none;
+    }
+    .xo-oc-wnxt p > b{
+        display: block;
+        position: absolute;
+        margin-left: -24px;
+        height: 0px;
+        width: 0px;
+        border: 7px solid;
+        margin-top: 4px;
+        padding: 0px;
+    }
+    .xo-spb > p,.xo-oc-cpa {
+        font-size: 16px;
+        line-height: 21px;
+    }
+    .xo-oc-slrc thead tr{
+        border: 1px solid #333;
+    }
+    .xo-oc-slrc tr{
+        border-left: 1px solid #333;
+        border-right: 1px solid #333;
+    }
+    .xo-oc-slrc tbody td, .xo-oc-slrc tfoot{
+        border: 1px solid #333;        
+    }
+}
+
+
+.xo-oc-emiROI {
+	color: #686868;
+	padding-top: 15px;
+}
+.xo-oc-emiROI-diff {
+	color: #686868;
+	padding-top: 8px;
+}
+
+.linkPayback {
+	display: inline-block;
+	margin-top: -7px;
+	font-size: 12px;
+	vertical-align: middle;
+	margin-left: 0px;
+	color:#666666;
+}
+
+.fontStyle {
+	line-height: 19px;
+	margin-top:5px;
+	font-size:14px !important;
+}
+
+/* Added for GuestXO revamp */
+
+.xo-oc-gu-hline {
+    color: #333;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;    
+    margin-top: 4px;  
+    margin-right: 20px;
+}
+
+.xo-oc-gu-dnone {
+	display:none;
+}
+
+.xo-oc-gu-err {	
+	color:red;	
+}
+
+.xo-oc-gu-bold {
+	font-weight: bold;
+}
+
+.xo-oc-gu-border {
+    border-style: solid;
+    border-width: 1px;
+}
+
+.xo-ocg-d h2 {
+    color: #666;
+    padding-bottom: 18px;
+    font-size: 22px;
+}
+.xo-ocg-d h6 {
+    color: #666;
+    padding-bottom: 18px;
+    font-size: 14px;
+}
+
+.xo-oc-gu-wc-parent-div {
+	margin-top: -42px;
+	margin-left: 55px ;	
+}
+
+.xo-oc-gu-wc-span1 {
+	color:red; 
+	font-size:22px;
+	font-weight: bold;
+}
+
+.xo-oc-gu-wc-span2 {
+	margin-top:10px;
+	margin-right:5px;
+}
+.xo-gu-pro,.xo-gu-prox{
+    padding: 10px 0px;
+}
+.xo-gu-pro img,.xo-gu-pro button,.xo-gu-prox #signUp{
+    display: none;
+}
+.xo-gu-prox img,.xo-gu-prox button,.xo-gu-pro #signUp{
+    display: inline-block;
+} 
+.xo-gu-prox img{
+    vertical-align: middle;
+    margin-left: 10px;
+}
+
+.xo-oc-gu-un-msg {
+	margin-top: 25px; 
+	margin-left:-24px;	
+}
+.xo-oc-gu-un-msg-li {
+	margin-top: 10px;
+}
+.xo-oc-gu-un-span {
+	font-weight: bold;
+}
+.truncate {
+  white-space: nowrap; 
+    width: 25em; 
+    overflow: hidden;
+    text-overflow: ellipsis; 
+}
+.xo-oc-gu-dinline {
+	display: inline-block;
+}
