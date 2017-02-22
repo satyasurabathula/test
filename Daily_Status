@@ -13,3 +13,4 @@
 17: Changes in RSS and custom search issues in mobile
 20: Marketo UI Changes. Fix the issue in "ASANA" for app revoke functionality.
 21: Changes in JIVE and "Please Select" issue is fixed in rooms dropdown.
+22: Make authDetails call one time before authentication and changes made in uservoice for room searching functionality in mobile and depolyed to prod.
