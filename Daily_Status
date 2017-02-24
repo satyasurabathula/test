@@ -14,3 +14,6 @@
 20: Marketo UI Changes. Fix the issue in "ASANA" for app revoke functionality.
 21: Changes in JIVE and "Please Select" issue is fixed in rooms dropdown.
 22: Make authDetails call one time before authentication and changes made in uservoice for room searching functionality in mobile and depolyed to prod.
+	Added contents dropdown based on place id in jive.
+23: Changes done in Jive and apply "Room" search functionality for all apps in dev.
+24: changed room searching functionality for all apps and depolyed to prod.
