@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Asana Configuration</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.css" rel="stylesheet" type="text/css"> 
+<link href="https://d24wgzqqegxpap.cloudfront.net/api/css/collab-ui-min.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/styles.css" rel="stylesheet" type="text/css">  
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/select2.min.css" rel="stylesheet" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.js"></script> 
+<script type="text/javascript" src="https://d24wgzqqegxpap.cloudfront.net/api/js/porthole.min.js"></script>
+<script type="text/javascript" src="https://183.82.99.100:8443/CiscoWebcontent/js/scriptsRoom.js"></script>
+<script src="https://183.82.99.100:8443/CiscoWebcontent/js/select2.min.js"></script>
+<script>
+	integration_app_icon_url="https://183.82.99.100:8443/CiscoWebcontent/images/asana/asana.png";
+	clientAppRevokeMsg = '<p class="integrationAuthMsg"><span class="info-icon" title=""> &nbsp;</span><span>We are facing difficulty while accessing your Asana account. Please click on Add to authorize.</span></p>';
+	var application_id="25";
+	var project_modified=false;
+	var instance_uuid="";
+	var webhook_id_old = "";
+	var org_id_old = "";
+	var project_id_old = "";
+	var asana_user_id = "";
+	var room_id = "";
+	var selectedSourceId = "";
+	var selectedProjId = "";
+	var selectedTeamId = "";
+	var eventsMatchFlag = true;
+	var configFlag = false;
+	var teamStatus = true;
+	var projectStatus = true;
+	var teamFlag=false;	
+	var projectFlag=false;
+	var selected_team_id = "0";
+	var selected_org_id = "0";
+	var selected_project_id = "0";
+	var configEditEvents = "";
+	var team_id_old = "";
+	var team_modified=false;
+	var saveJsonString = "";
+	var selectedRoomName = "";
+	var action_url = "";
+	var actionType = "";
+	appName = "Asana";
+	postMessageToSpark = "Asana "+postMessageToSpark;
+	updateMessageToSpark= "Asana "+updateMessageToSpark;
+	removeMessageToSpark= "Asana "+removeMessageToSpark;
+	$(document).ready(function(){
+		application_auth_details_url="/api/applications/"+application_id;
+		token_url="/api/integrations/"+integration_id+"/authDetails";
+		save_spark_token_url="/api/clients/tokens";
+		save_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		get_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		configuration_settings_url="/api/integrations/"+integration_id+"/uiSettings";
+		save_configuration_settings_url="/api/integrations/instances";
+		update_configuration_settings_url="/api/integrations/instances/";
+		delete_instance_url="/api/integrations/instances/";
+		list_integration_instances_url="/api/integrations/instances";		
+		removeall_integration_instances_url="/api/integrations/instances";	
+		delete_spark_token_url="/api/clients/tokens";
+		delete_integration_token_url="/api/integrations/"+integration_id+"/appTokens";		
+		$('#integration-form').hide();
+		action=action.toLowerCase();
+		if(action=="connect") {
+			$("#integrations-block").hide();
+			$("#integration-form").hide();
+			validateIntegrationAppToken();
+		} else if(action=="disconnect") {
+			formAction="disconnect";
+			removeAllIntegrationInstances(formAction);
+		}else {
+			var app_code =  gup(window.top.location.href, 'code');
+			if(app_code!="") {
+				generateIntegrationAppToken(app_code); 
+			} else {
+				validateIntegrationAppTokenDB();
+			}
+		} 
+		$("#rooms").select2();
+		$('#asana-icon').attr("src", integration_app_icon_url);
+		$(".spark-icon").attr("src", spark_icon_url);	
+		$("#asana #submit-button").click(function (e){
+			e.preventDefault();
+			saveAsanaInstance();
+		});
+		$("#cancel-button").click(function (e){
+			e.preventDefault();			
+			$('#integration-form').hide();
+			$('#integrations-block').show();
+			listIntegrations();
+			resize();
+		});
+		$('#asana #add-config').click(function(e){
+			e.preventDefault();	
+			formAction="add";
+			if(listResultData.length != 0){
+				$("#submit-button").text("Add");   
+				if(isClientAppTokenValid){
+					resetForm();
+					$('#organization option[value!="0"]').remove();   
+					loadAsanaForm();loadRooms();
+				}else{
+					setIntegrationAppAuthDetails(integration_id);
+				}
+			}
+			else{
+				$("#submit-button").text("Add Integration");				
+				validateIntegrationAppToken();				
+			}
+			
+		}); 
+		$("#asana #organization").on('change',function(){
+			if($('#organization').val()!=0&&formAction=="update"){
+				$(".edit-itemconfig-info").hide();
+			}
+		});
+		$("#asana #team").on('change',function(){
+			if($('#team').val()!=0&&formAction=="update"){
+				$(".edit-teamconfig-info").hide();
+			}
+		});	
+		$("#asana #projects").on('change',function(){
+			if($('#projects').val()!=0&&formAction=="update"){
+				$(".edit-projectsconfig-info").hide();
+			}
+		});	
+		$("#asana #rooms").on('change',function(){
+			if($('#rooms').val()!=0&&formAction=="update")
+				$(".edit-roomconfig-info").hide();
+		});	
+		$(document).on("click", ".same-config-yes" , function(e) {
+			console.log("yes clicked!!!!!!!!!!!!!");
+			saveAsanaInstanceConfig();
+		});
+		$(document).on("click", ".same-config-no" , function(e) {
+			console.log("no clicked!!!!!!!!!!!!!");
+			$('#same-configuration').foundation('close');
+		});
+		$(document).on("click", "#asana #instance-list-block .edit-config" , function() {
+			$(".edit-config").attr("disabled","disabled");
+			resetForm();
+			$(".edit-itemconfig-info").hide();
+			$(".edit-teamconfig-info").hide();
+			$(".edit-projectsconfig-info").hide();
+			$(".edit-roomconfig-info").hide();
+			$('#organization option[value!="0"]').remove();  
+			var jsonObject1={};
+			project_modified=false;
+			team_modified=false;
+			formAction="update"; 
+			room_modified=false;
+			$("#submit-button").text("Save");
+			instanceId=this.id;
+			$.each(listResultData,function(index,value){
+				if(value["instanceId"]==instanceId) {
+					instanceData=value;
+				}
+			});
+			selected_room_id=instanceData.channelId;
+			instance_uuid = instanceData.instanceUuid;
+			room_id_old = instanceData.channelId;
+			var config=JSON.parse(instanceData.configJson);  
+			webhook_id_old=config.webhook_id; 
+			project_id_old=config.project_id;
+			jsonObject1["integrationId"] = integration_id;
+			jsonObject1["userId"] = user_id; 
+			jsonObject1["organizationId"] = config.organization_id;
+			jsonObject1["responseType"]= 'teams'; 
+			jsonObject1["asana_user_id"]= config.asana_user_id;
+			jsonString1=JSON.stringify(jsonObject1);
+			var jsonObject2={};
+			jsonObject2["integrationId"] = integration_id;
+			jsonObject2["userId"] = user_id;
+			jsonObject2["teamId"] = config.team_id;
+			jsonObject2["responseType"]= 'projects'; 
+			jsonString2=JSON.stringify(jsonObject2);
+			selected_org_id=config.organization_id;
+			selected_team_id = config.team_id;
+			selected_project_id = config.project_id;
+			configEditEvents = config.notifications;
+			loadAsanaForm(); 
+			$('#displayName').val(config.displayName);
+			org_id_old = config.organization_id;
+			team_id_old = config.team_id;
+			resize();
+		});	
+		function validateIntegrationAppToken() {
+			$.ajax({url: get_app_token_url+"?userId="+user_id,
+				async:true,
+				type: "get",
+				success: function(result){
+					if(result.tokenResult.tokenId) {
+						validateIntegrationAppspecificToken();
+					} else {
+						setIntegrationAppAuthDetails(integration_id);
+					}
+				},
+				error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						$('#instance-loading-block').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+		}
+		function validateIntegrationAppspecificToken(){
+			$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+						if(result["integrationSpecificSettings"]["isValidToken"]==false && result["integrationSpecificSettings"]["isValidToken"] != undefined){
+							isClientAppTokenValid = false;
+							console.log("***** validateIntegrationsApp token  with validateClientToken *********");
+							if(listResultData.length==0){
+								setIntegrationAppAuthDetails(integration_id);
+							}
+						}else{
+							if(formAction == "add"){
+								resetForm(); 
+								$('#organization option[value!="0"]').remove();   
+							}
+							loadAsanaForm();
+						}
+					},
+				error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+					   alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+		}
+		function resetForm(){
+			$("#teamSelect").hide();
+			$("#projectSelect").hide();
+			$("#selectedProjects").hide();
+			$('#teamSelect option[value!="0"]').remove(); 
+			$('#projectSelect option[value!="0"]').remove();    
+			$('.project-list input:checkbox').removeAttr('checked');
+		}
+		
+		$("#organization").change(function () {
+			if($("#organization").val() != '0'){ 
+				selected_team_id = "0";
+				var jsonObject={};
+				jsonObject["integrationId"] = integration_id;
+				jsonObject["userId"] = user_id;
+				jsonObject["organizationId"] = $("#organization").val();
+				jsonObject["responseType"]= 'teams';
+				jsonObject["asana_user_id"]= asana_user_id;
+				jsonString1=JSON.stringify(jsonObject);
+				resetForm();
+				getOrganizationTeamsList();
+			}
+			resize();
+		});
+		$("#team").change(function () {
+			if($("#team").val() != '0'){ 
+				selected_project_id = "0";
+				var jsonObject={};
+				jsonObject["integrationId"] = integration_id;
+				jsonObject["userId"] = user_id;
+				jsonObject["teamId"] = $("#team").val();
+				jsonObject["responseType"]= 'projects';
+				jsonString2=JSON.stringify(jsonObject);
+				$("#projectSelect").hide();  
+				$("#selectedProjects").hide(); 
+				$('#projectSelect option[value!="0"]').remove(); 
+				$('.project-list input:checkbox').removeAttr('checked');
+				getTeamProjectsList();
+			}
+			resize();
+		});
+		 $("#projects").change(function () {
+			if($("#projects").val() != '0'){
+				$("#selectedProjects").show();
+				$(".project-label").html($("#projects option:selected").text());
+				$('.project-list input:checkbox').removeAttr('checked');
+			}
+			resize();
+		});  
+	});
+	function validateSpecificAppToken(app_code){
+		$.ajax({
+			url: configuration_settings_url+"?userId="+user_id,
+			async: true,
+			success: function(result){
+					if(result["integrationSpecificSettings"]["isValidToken"]==false && result["integrationSpecificSettings"]["isValidToken"] != undefined){
+						isClientAppTokenValid = false;
+						console.log("***** validateIntegrationsApp token  with validateSpecificAppToken() *********");
+						if(app_code!="") getIntegrationAppTokenDetails(app_code);
+						else setIntegrationAppAuthDetails(integration_id);						
+						console.log("isClientAppTokenValid ***** "+isClientAppTokenValid);
+					}else{
+						isClientAppTokenValid = true;
+						listIntegrations();
+					}
+				},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+				   alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function getListInstances(){
+		$.ajax({url: list_integration_instances_url+"?userId="+user_id+"&integrationId="+integration_id,
+			async:true,
+			success: function(result){
+			 instanceList = result;
+			 if(instanceList.length != 0 && instanceList.message == undefined){
+				 console.log("instanceList in getListInstances()"+instanceList.length);
+				 listIntegrations();
+			 }else{
+				 loadBoxForm();
+			 }
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }
+			}
+		});
+	}
+	function setIntegrationAppAuthDetails() {
+		var OAUTHURL    =   '';
+		var CLIENTID    =   '';
+		var TYPE        =   'code'; 
+		var STATE = '<STATE_PARAM>'; 
+		var REDIRECT_URI = "https://183.82.99.100:444/CiscoWebcontent/dev/asana.html"; 
+		$.ajax({url: application_auth_details_url,
+			async:true,
+			success: function(result){
+				CLIENTID=result.clientId;
+				OAUTHURL= result.authorizationEndpoint;				
+				OAUTHURL=OAUTHURL+'?client_id='+CLIENTID+'&response_type='+TYPE+'&redirect_uri='+REDIRECT_URI+'&state='+STATE; 
+				loginWithAuthDetails(OAUTHURL);	
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});		
+	}
+	function loginWithAuthDetails(oauthURL) {
+		isRedirect=true;
+		if(isRedirect) {
+			if(formAction=="add") {
+				window.top.location.href = oauthURL;
+			} else {
+				var authReqMsg ="";
+				authReqMsg+='<hr class="instance-hr"><div class="large-12 medium-12 columns instance-background">';
+				authReqMsg+='<div class="no-config-msg">You are not authorized to this integration. Click Add to continue.</div></div>';
+				$('#integrations-block').show();
+				$("#instance-list-block").html(authReqMsg);
+			}			
+		} else {
+			var win = window.open(oauthURL, "windowname1", 'width=600, height=600'); 
+			if(win){ 
+			}else{
+				alert(popblockedMessage); 
+				return false;
+			}
+			var pollTimer = window.setInterval(function() { 
+				try {
+					if (win.document.URL.indexOf("code") != -1) { 
+						window.clearInterval(pollTimer);
+						var url =   win.document.URL;
+						accessCode =   gup(url, 'code');  
+						win.close();
+						getIntegrationAppTokenDetails(accessCode);
+					}
+				} catch(e) {
+					console.log('error while getting authorization code..'+e);
+				}
+			}, 100);
+		}
+    }
+	function getIntegrationAppTokenDetails(code) { 
+		var jsonObject={};
+		jsonObject["integrationId"] = integration_id;
+		jsonObject["authSettings"] = {};
+		jsonObject["authSettings"]["code"] = code;
+		jsonString=JSON.stringify(jsonObject)
+		$.ajax({url: token_url,
+			async:true,
+			type: "POST",
+			data: jsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){
+				var tokenDetails=result["integrationSpecificAuthDetails"]["tokenResponse"];
+				var jsonObject1={};
+				jsonObject1["applicationId"] = application_id;
+				jsonObject1["integrationId"] = integration_id;
+				jsonObject1["accessToken"] = tokenDetails.access_token;
+				jsonObject1["expires"] = tokenDetails.expires_in;
+				jsonObject1["refreshToken"] = tokenDetails.refresh_token;
+				jsonObject1["refreshExpires"] = tokenDetails.refreshExpires;
+				var jsonString=JSON.stringify(jsonObject1);				
+				if(tokenDetails.refresh_token!="" && tokenDetails.refresh_token!=null){		
+					saveIntegrationAppToken(jsonString);
+				}else{
+					$("#integrations-block").show();
+					resize();
+				}				
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function saveIntegrationAppToken(jsonData){
+		$.ajax({url: save_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "POST",
+			data: jsonData,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){		
+				connectIntegration();
+				if(isClientAppTokenValid == false) getListInstances();
+				else loadAsanaForm();
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});	
+	}
+	function generateIntegrationAppToken(app_code) {
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					validateSpecificAppToken(app_code);
+				} else {
+					getIntegrationAppTokenDetails(app_code); 
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function getAuthUser(){
+	if(ui_settings["integrationSpecificSettings"]["usersDetails"] != undefined && ui_settings["integrationSpecificSettings"]["usersDetails"] != null)
+		authenticated_user=ui_settings["integrationSpecificSettings"]["usersDetails"]["data"].email;
+	}
+	function setConfigEvents(){
+		if($.isArray(configEditEvents)) {
+				$.each(configEditEvents,function(index,value){
+					$("input[type=checkbox][value="+value+"]").prop("checked",true);
+				});
+			} else {
+				$("input[type=checkbox][value="+configEditEvents+"]").prop("checked",true);
+			}
+	}
+	function getOrganizationTeamsList(){
+		$('.asana-loading').show();
+		teamFlag=false;	
+		$(".edit-teamconfig-info").hide();
+		resize();
+		var teamList = [];
+		$.ajax({url: configuration_settings_url+"?userId="+user_id,
+				type: "POST",
+				async:true,
+				data: jsonString1,
+				contentType: "application/json",
+				dataType: "json",
+				success: function(result){
+					$('.asana-loading').hide();
+					var teams = result["postSpecificIntegrationSettings"]["TeamsResult"]["data"]; 
+					if(teams.length != 0){
+						teamStatus = true;
+						$.each(teams, function(id,obj){ 
+							$("#team").append($('<option>').text(obj.name).attr('value',obj.id));
+							teamList.push(obj.id);
+							if(formAction=="update" && selected_team_id==obj.id && teamFlag==false){
+								selected_team_id=obj.id;
+								teamFlag =true;
+								getTeamProjectsList();
+							}
+						});	
+						$("#teamSelect").show(); 
+					}else{
+						$("#teamSelect").hide();
+						$('.asana-loading').hide();
+						teamStatus = false;
+						alert("No teams available for selected Workspace.");
+					}  
+					if(formAction=="update" && teamFlag==false && selected_team_id!=0){
+						selected_team_id = "0";
+						$(".edit-teamconfig-info").show();
+					}
+					$("#team").val(selected_team_id);
+					selected_team_id="0";
+				},
+				error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						$("#teamSelect").hide();
+						$('.asana-loading').hide();
+						if(formAction=="update"){
+							$("#integration-form").hide();
+							$('#integrations-block').show();
+						}
+						alert("We've experienced some difficulty. Try again.");
+						resize();
+					}
+				}
+			});
+	}
+	function getTeamProjectsList(){
+		$('.asana-loading').show();
+		$("#selectedProjects").hide();
+		projectFlag=false;	
+		$(".edit-projectsconfig-info").hide();
+		resize();
+		$.ajax({url: configuration_settings_url+"?userId="+user_id,
+				async:true,
+				type: "POST",
+				data: jsonString2,
+				contentType: "application/json",
+				dataType: "json",
+				success: function(result){ 
+					$('.asana-loading').hide();
+					var projectsresponse = result["postSpecificIntegrationSettings"]["projectsResponse"];
+					var projects = result["postSpecificIntegrationSettings"]["projectsResponse"]["data"];
+					if(projects != undefined){
+						if(projects.length != 0){
+							projectStatus = true;
+							$.each(projects, function(id,obj){ 
+								$("#projects").append($('<option>').text(obj.name).attr('value',obj.id));
+								if(formAction=="update" && selected_project_id==obj.id && projectFlag==false && teamFlag==true){
+									selected_project_id=obj.id;
+									projectFlag =true;
+									setConfigEvents();
+									$("#selectedProjects").show(); 
+								}
+							});	
+							$("#projectSelect").show();
+						}else{
+							$("#projectSelect").hide();
+							$('.asana-loading').hide();
+							projectStatus = false;
+							alert("No projects available for selected team.");
+						} 
+						if(formAction=="update" && projectFlag==false && selected_project_id!=0 && teamFlag==true){
+							selected_project_id = "0";
+							$(".edit-projectsconfig-info").show();
+						}
+						if(teamFlag==false)selected_project_id = "0";
+						$("#projects").val(selected_project_id);
+						selected_project_id="0";
+					}else if(projectsresponse.error != undefined){
+						$("#projectSelect").hide();
+						alert(projectsresponse.error);
+					}
+					resize();
+				},
+				error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						$("#projectSelect").hide();
+						$('.asana-loading').hide();
+						if(formAction=="update"){
+							$("#integration-form").hide();
+							$('#integrations-block').show();
+						}
+						alert("We've experienced some difficulty. Try again.");
+						resize();
+					}
+				}
+			});
+	}
+	function loadAsanaForm(){		 
+		$("#form").trigger("reset");
+		$('#integrations-block').hide();
+		$("#integration-form").show();
+		$(".edit-roomconfig-info").hide();
+		$(".edit-itemconfig-info").hide();
+		$(".rooms-loading").show();
+		resize();
+		if(ui_settings=="") {
+			$("#settings-loading").show();
+			$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					$("#settings-loading").hide();
+					ui_settings=result;	
+					loadConfigurationSettings();
+					loadRooms();
+				},
+				error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						$('#integrations-block').show();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+			getAllSparkRooms();
+		}else{ 
+			loadConfigurationSettings();
+		} 
+	}
+	function loadConfigurationSettings(){ 
+			if(ui_settings["sparkRoomSettings"] && ui_settings["integrationSpecificSettings"]["organizations"]!= undefined && ui_settings["integrationSpecificSettings"]["organizations"]!= ""){
+				var orgList =[];
+				var itemFlag=false;
+				var roomFlag=false;
+				var rooms = "";
+				var authorizedto=ui_settings["integrationSpecificSettings"]["usersDetails"]["data"].email;
+				asana_user_id = ui_settings["integrationSpecificSettings"]["usersDetails"]["data"].id;
+				if(authorizedto!=""&& authorizedto!=undefined) {
+					$('#authenticted-to').html(authorizedto); 
+					$(".authenticted-block").css("display","block");
+				}
+				var itemslist = ui_settings["integrationSpecificSettings"]["organizations"]["data"];  
+				var isOrgExists = false;
+				var foldersCount = 0,filesCount = 0;
+				$.each(itemslist, function(id,obj){	 
+					isOrgExists = true;
+					 $("#organization").append($('<option>').text(obj.name).attr('value',obj.id)); 
+					 if(formAction=="update" && selected_org_id==obj.id && itemFlag==false){
+						selected_org_id=obj.id;
+						itemFlag=true;
+						getOrganizationTeamsList();
+					}
+				}); 
+				if(formAction=="update" && itemFlag==false){
+					selected_org_id = "0";
+					$(".edit-itemconfig-info").show();
+					$("#teamSelect").hide();
+					$("#projectSelect").hide();
+				}
+				$('#rooms')[0].options.length = 1;
+				rooms = ui_settings["sparkRoomSettings"].items;
+				if(allRooms.length !=0) {
+					rooms = allRooms;
+					$(".rooms-loading").hide();
+				}
+				//if(!isMobile)$("#rooms").customselect("destroy");
+				$.each(rooms, function(id,obj){
+					$("#rooms").append($('<option>').text(obj.title).attr('value',obj.id));
+					if(formAction=="update" && selected_room_id==obj.id&&roomFlag==false){
+						selected_room_id=obj.id;
+						roomFlag=true;
+					}
+				});	
+				if(formAction=="update" && roomFlag==false){
+					selected_room_id = "0";
+					$(".edit-roomconfig-info").show();
+				}
+				$("#rooms").val(selected_room_id);
+				$("#organization").val(selected_org_id);
+				$('#select2-rooms-container').html($("#rooms option:selected").text());
+				selected_room_id="0";
+				selected_org_id = "0";
+				if(isOrgExists) {
+					} else {
+						$('.no-configuration-block').show();
+						$('#form').hide();
+				}
+				//if(!isMobile)$("#rooms").customselect();
+				$(".edit-config").removeAttr("disabled");			
+			}else{
+				alert("We've experienced some difficulty. Try again.");
+			}
+	}
+	function validateConfiguration(instance, notifications){
+		var configData = JSON.parse(instance.configJson);
+		var configEvents = configData.notifications;
+		var notificationsLength = notifications.length;
+		var matchCount = 0;
+		configFlag = false;
+		eventsMatchFlag = true;
+		if(instance.channelId==room_id&&configData.organization_id==selectedSourceId&&configData.project_id==selectedProjId&&configData.team_id==selectedTeamId){
+			configFlag = true;
+		}
+		if($.isArray(notifications)){
+			if($.isArray(configEvents)){
+				for (var p in notifications) {
+					if(configEvents[p] != notifications[p]){
+						eventsMatchFlag = false;
+					}else {
+						matchCount = matchCount +1;
+					}
+					if(matchCount==configEvents.length&&notificationsLength==configEvents.length){
+						eventsMatchFlag = true;
+						return false;
+					}else{
+						eventsMatchFlag = false;
+					}
+				}
+			}else{
+				eventsMatchFlag = false;
+			}
+		}else{
+			if($.isArray(configEvents)){
+			    eventsMatchFlag = false;
+			}else{
+			  if(configEvents==notifications){
+				eventsMatchFlag = true;
+			  }else{
+				eventsMatchFlag = false;
+			  }
+			}
+		}
+	}
+	function saveAsanaInstance(){
+		var eventsArray = [];
+		var res = $('form').serializeObject();
+		selectedRoomName=$("#rooms option:selected").text();
+		selectedSourceId=$("#organization option:selected").val();
+		selectedProjId= $("#projects option:selected").val();
+		selectedTeamId = $("#team").val();
+		room_id =$("#rooms option:selected").val();
+		var source_name = $("#organization option:selected").text();
+		var jsonData = {};
+		jsonData["channelId"] = room_id;								
+		jsonData["integrationId"] = integration_id;
+		jsonData["status"] = "ACTIVE";
+		jsonData["userId"] = user_id;
+		postAddMessageToRoom(room_id,appName);
+		if(formAction=="update") {
+			jsonData["configJson"]={};
+			jsonData["instance_id"] = instanceId; 
+			
+			if(room_id!=room_id_old) {
+				room_modified=true;
+				jsonData["messageToSpark"] = updateMessageToSpark;
+			} else {
+				room_modified=false;
+			}
+			if(selectedSourceId!=org_id_old) {
+				repo_modified=true;
+			} else {
+				repo_modified=false;
+			}
+			if(project_id_old!=selectedProjId) {
+				project_modified=true;
+				jsonData["repo_id_old"]= webhook_id_old;
+			} else {
+				project_modified=false;
+			}
+			if(team_id_old!=selectedTeamId) {
+				team_modified=true;
+			} else {
+				team_modified=false;
+			}					
+			jsonData["repo_modified"] = repo_modified;
+			jsonData["repo_modified"] = project_modified;	
+			jsonData["room_modified"] = room_modified;	
+			jsonData["instanceUuid"] = instance_uuid;
+			jsonData["configJson"]["webhook_id"] = webhook_id_old;
+			action_url=update_configuration_settings_url+instanceId;
+			actionType="PUT";
+			$('.loading-first-block').html('Please wait while your Integration is being updated');
+		} else {
+			jsonData["configJson"]={};			
+			jsonData["messageToSpark"] = postMessageToSpark;
+			action_url=save_configuration_settings_url;
+			actionType="POST";
+			$('.loading-first-block').html('Please wait while your Integration is being set up');
+		}
+		if($.isArray(res.events)){
+			jsonData["configJson"]["notifications"] = res.events; 
+		}else{
+			eventsArray.push(res.events);
+			jsonData["configJson"]["notifications"] = eventsArray; 
+		}
+		jsonData["configJson"]["project_id"] = $("#projects").val();
+		jsonData["configJson"]["team_id"] = $("#team").val();
+		jsonData["configJson"]["organization_id"] = $("#organization").val(); 
+		jsonData["configJson"]["displayName"]= res.displayName;
+		jsonData["configJson"]["asana_user_id"]= asana_user_id;
+		jsonData["messageFormat"]="Asana Bot";
+		saveJsonString = JSON.stringify(jsonData);
+		var notificationslength = objLength(res.events);
+		console.log("notificationslength!!!!!!!!!!" + notificationslength);
+		var notifications = res.events;
+		if(listResultData.length != 0 && notificationslength !=0){
+			$.each(listResultData, function(i, instance) {
+				if(formAction=="update"&&instance.instanceId!=instanceId){
+				 validateConfiguration(instance, notifications);
+				 if(eventsMatchFlag==true&&configFlag==true){
+						return false;
+					}
+				}
+				if(formAction!="update"){
+				 validateConfiguration(instance, notifications);
+				  if(eventsMatchFlag==true&&configFlag==true){
+						return false;
+					}
+				}
+			});
+		}
+		if($('#rooms').val()==0 || $('#rooms').val()==null){ 
+		    alert("Please select Space.");
+		}else if($('#organization').val()==0){ 
+		    alert("Please select a Workspace.");
+		}else if(teamStatus==false){
+			alert("Selected Workspace doesn't have teams.");
+		}else if($('#team').val()==0){ 
+		    alert("Please select a Team.");
+		}else if(projectStatus==false){
+			alert("Selected Team doesn't have projects.");
+		}else if($('#projects').val()==0){ 
+		    alert("Please select a Project.");
+		}else if(notificationslength==0){ 
+		    alert("Please select atleast one Event.");
+		}else if(listResultData.length != 0 && eventsMatchFlag==true && configFlag==true){
+			if(formAction=="update"){
+				$.each(listResultData, function(i, instance) {
+					if(formAction=="update"&&instance.instanceId==instanceId){
+					 validateConfiguration(instance, notifications);
+					}
+				});
+				if(room_modified || repo_modified || team_modified || project_modified || !eventsMatchFlag)
+					$('#same-configuration').foundation('open');
+				else
+					saveAsanaInstanceConfig();
+			}else{
+				$('#same-configuration').foundation('open');
+			}
+		}else {
+			saveAsanaInstanceConfig();
+		}
+	}
+	function saveAsanaInstanceConfig(){
+		console.log("saveAsanaInstanceConfig!!!!!!!!!");
+		$('#same-configuration').foundation('close');
+		$('.loading-second-block').html('Selected Space is '+ selectedRoomName);
+		$('#loading-block').foundation('open');
+		$.ajax({url: action_url+"?userId="+user_id,
+			async:true,
+			type: actionType,
+			data: saveJsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){	
+				$('#success-integration').foundation('open');
+				$('#loading-block').foundation('close');					
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					$('#loading-block').foundation('close');
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+		$('.loading-first-block').html('Please wait just a moment while your app is loading');
+		$('.loading-second-block').html('');
+	}
+</script>
+</head>
+<body>	
+	<div class="integration-app" id="asana">
+		<div class="rows large-12 medium-12 columns warning-msg" style="display:none;"></div>
+		<div class="rows large-12 medium-12 columns client-app-warning" style="display:none;"></div>
+		<div id="loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait just a moment while your app is loading</div>
+				<div class="loading-second-block">name and space name</div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="list-loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait...</div>
+				<div class="loading-second-block"></div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="success-integration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="success-loading">
+				<img class="spark-icon" src="" alt=".....">
+			</div>
+			<div class="well-done-text">Well done!</div>
+			<div class="success-integration-first-block">Your configuration has been set up and is ready to use.</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<div class="success-integration-second-block">
+					<!--<button class="button" id="room-button">Go to
+						Content Testing Space</button>-->
+					<button class="secondary button" id="done-button">Done</button>
+				</div>
+			</div>
+		</div>
+		<div class="reveal" id="remove-integration-popup" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="large-12 columns desktop-block">
+				<div class="row ">
+					<div class="large-2 medium-2 columns"><img alt="icon" id="asana-icon" src=""></div>
+					<div class="large-6 medium-6 columns" style="float:left;">
+						<span id="displayName-label">Asana</span><br>
+						<span id="addedon-label"></span>
+					</div>
+				</div><br>
+				<div class="msg-labels">
+					<label id="remove-msg"></label> 
+					<label id="remove-auth"></label>
+				</div>
+				<button class="close-button" data-close aria-label="Close modal" type="button">
+					<span aria-hidden="true">&times;</span>
+				</button><br><br>
+				<button class="button remove-integration-btn" id="remove-integration-btn" style="float:right">Remove</button>
+			</div>
+			<div class="large-12 columns mobile-block">	
+				<div class="msg-labels">
+					<label id="remove-msg-mobile"></label> 
+					<label id="remove-auth-mobile"></label> 
+				</div>				
+				<div class="option-buttons remove-integration-buttons">
+					<label class="remove-popup-cancel"> 
+						<a href="#" id="cancel-remove-integration">cancel</a>
+					</label>
+					<label class="remove-popup-remove">
+						<a href="#" id="remove-integration-btn" class="remove-integration-btn">remove</a>
+					</label>
+				</div>
+			</div>
+		</div>
+		<div id="same-configuration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="same-config-text">An identical configuration to the same Cisco Spark space you have selected already exists. Are you sure you want to configure one more?</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<button class="secondary button same-config-yes">Yes</button>
+				<button class="secondary button same-config-no">No</button>
+			</div>
+		</div>
+		<div class="integrations" id="integrations-block">
+			<div id="instance-loading-block" class="row instance-loading-block" style="display: none;">
+				<div class="instances-loading">&nbsp;</div>
+				<div class="instances-loading-text"></div>
+			</div>
+			<div id="home" class="home">				
+				<div class="row add-config-block">
+					<div class="large-12 medium-12 columns">							
+						<div class="large-6 medium-6 columns config-name"><label>Asana configurations</label></div>
+						<div class="large-6 medium-6 columns">
+							<button class="button" data-open="remove-integration-popup" id="remove-all-config">Remove All</button>
+							<button class="secondary button" id="add-config">Add</button>
+						</div>					
+					</div>
+				</div>
+				<div id="instance-list-block" class="row instance-list-block">						
+				</div>
+			</div>
+		</div>
+		<div id="integration-form" class="large-12 columns" >
+			<div class="large-12 medium-12 columns edit-itemconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured workspace does not exist.</span></p>
+			</div>
+			<div class="large-12 medium-12 columns edit-roomconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured space does not exist.</span></p>
+			</div>
+			<div class="large-12 medium-12 columns edit-teamconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured team does not exist.</span></p>
+			</div>
+			<div class="large-12 medium-12 columns edit-projectsconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured project does not exist.</span></p>
+			</div>
+			<div class="authenticted-block">Authenticated to Asana as: <span id="authenticted-to"></span></div>
+			<div class="no-configuration-block" style="display:none">There are no workspace available in your Asana Account. Please Add Workspace in your account and configure</div>
+			<form name="form" id="form" method="post">
+				<div class="row app-config-block">
+					<div class="large-10 medium-10 columns">
+						<label class="heading-01">Asana configuration</label>
+						<div class="large-8 columns items-config asana-sub-list">
+							<div class="large-3 medium-2 columns ">
+								<label class="label-config">Workspace:</label>
+							</div>
+							<div class="large-5 medium-5 dropdown-config columns text left ">
+								<select id="organization" name="resource" class="dropdown">
+									<option value='0' hidden>Select Your Organization</option> 	 
+								</select>
+								<span class="has-tip tip-right" id="tooltip" title="Workspace, for which you'd receive notifications" data-tooltip><img class="tool-tip"></span>
+								<div class="settings-loading" style="display: none;"></div>
+							</div>								
+						</div>
+						<div class="large-8 columns items-config asana-sub-list" id="teamSelect" style="display:none">
+							<div class="large-3 medium-2 columns ">
+								<label class="label-config">Team:</label>
+							</div>
+							<div class="large-5 medium-5 dropdown-config columns text left ">
+								<select id="team" name="resource" class="dropdown">
+									<option value='0' hidden>Select Your Team</option>  
+								</select>
+								<span class="has-tip tip-right" id="tooltip" title="Team, for which you'd receive notifications" data-tooltip><img class="tool-tip"></span>
+								<div class="settings-loading" style="display: none;"></div>
+							</div>								
+						</div>
+						<div class="large-8 columns items-config asana-sub-list" id="projectSelect" style="display:none">
+							<div class="large-3 medium-2 columns ">
+								<label class="label-config">Project:</label>
+							</div>
+							<div class="large-5 medium-5 columns dropdown-config text left ">
+								<select id="projects" name="resource" class="dropdown">
+									<option value='0' hidden>Select Asana Projects</option>  									
+								</select>
+								<span class="has-tip tip-right" id="tooltip" title="Project, for which you'd receive notifications" data-tooltip><img class="tool-tip"></span>
+								<div class="settings-loading" style="display: none;"></div>								
+							</div>	 					
+						</div>
+						<div class="large-8 columns asana-sub-list asana-loading" style="display:none">
+							<div class="asana-items-loading"></div>
+						</div>
+					</div>
+					<div class="large-12 columns events-config" id="selectedProjects" style="display:none">
+						<div id="projects-division">
+							<div class="large-12 medium-12 columns events project-list">
+								<label>Notifications: Task (Includes Private Project)</label>
+								<div class="events-sub">
+									 <div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="created" name="events" value="created"/>
+											<label for="created">Created</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask" name="events" value="subtask"/>
+											<label for="subtask">SubTask Added</label>
+										</div>
+									</div>
+									<div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="assigned" name="events" value="assigned"/>
+											<label for="assigned">Assigned</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="unassigned" name="events" value="unassigned"/>
+											<label for="unassigned">UnAssigned</label>
+										</div>
+									</div>
+									<div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											 <input type="checkbox" id="completed" name="events" value="completed"/>
+											 <label for="completed">Completed</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="incomplete" name="events" value="incomplete"/>
+											<label for="incomplete">Incomplete</label>
+										</div>
+									</div> 
+									<div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="comment" name="events" value="comment"/>
+											<label for="comment">Comment Added</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="attachment" name="events" value="attachment"/>
+											<label for="attachment">Attachment Added</label>
+										</div>
+									</div> 
+									<div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="duedate" name="events" value="duedate"/>
+											<label for="duedate">Due Date Update</label>
+										</div> 
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="taskcopied" name="events" value="taskcopied"/>
+											<label for="taskcopied">Copy</label>
+										</div>
+									</div> 
+									<div class="large-12 medium-12 columns"> 
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="markfavorite" name="events" value="markfavorite"/>
+											<label for="markfavorite">Marked as favorite</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="markduplicate" name="events" value="markduplicate"/>
+											<label for="markduplicate">Marked as duplicate</label>
+										</div>
+									</div> 
+								</div>
+								<label>Notifications: SubTask (Includes Private Project)</label>
+								<div class="events-sub">
+									 <div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_taskcopied" name="events" value="subtask_taskcopied"/>
+											<label for="subtask_taskcopied">Copy</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_duedate" name="events" value="subtask_duedate"/>
+											<label for="subtask_duedate">Due Date Update</label>
+										</div> 
+									</div>
+									<div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_assigned" name="events" value="subtask_assigned"/>
+											<label for="subtask_assigned">Assigned</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_unassigned" name="events" value="subtask_unassigned"/>
+											<label for="subtask_unassigned">UnAssigned</label>
+										</div>
+									</div>
+									<div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											 <input type="checkbox" id="subtask_completed" name="events" value="subtask_completed"/>
+											 <label for="subtask_completed">Completed</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_incomplete" name="events" value="subtask_incomplete"/>
+											<label for="subtask_incomplete">Incomplete</label>
+										</div>
+									</div> 
+									<div class="large-12 medium-12 columns">
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_comment" name="events" value="subtask_comment"/>
+											<label for="subtask_comment">Comment Added</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_attachment" name="events" value="subtask_attachment"/>
+											<label for="subtask_attachment">Attachment Added</label>
+										</div>
+									</div> 
+									<div class="large-12 medium-12 columns"> 
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_markfavorite" name="events" value="subtask_markfavorite"/>
+											<label for="subtask_markfavorite">Marked as favorite</label>
+										</div>
+										<div class="large-3 medium-5 columns checkbox">
+											<input type="checkbox" id="subtask_markduplicate" name="events" value="subtask_markduplicate"/>
+											<label for="subtask_markduplicate">Marked as duplicate</label>
+										</div>
+									</div> 
+									
+								</div>
+							</div>
+						</div>
+					</div> 
+				</div>
+				<div class="row spark-config-block">
+					<div class="large-10 medium-10 columns">
+						<h3 class="heading-01">Cisco Spark configuration</h3>
+						<div class="large-8 columns sub-config-block">
+							<div class="large-2 medium-3 columns small-mobile">
+								<label>Space</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<select name="room" id="rooms" class="custom-select">
+								<option value='0'>Please Select</option></select>
+								<span class="has-tip tip-right" id="tooltip" title="Space in which you'd like to receive notifications. Ensure newly created spaces have at least one message in it for it to show up here." data-tooltip><img class="tool-tip"></span>
+							</div>
+							<div class="rooms-loading" style="display: none;"></div>
+						</div>
+						<div class="large-8 columns sub-config-block left">
+							<div class="large-2 medium-3 columns small-mobile config-optional">
+								<label>Configuration name (optional)</label>
+							</div>
+							<div class="large-5 medium-5  columns text left input-small-mobile">
+								<input type="text" name="displayName" id="displayName" class="integration-name"	value="">
+							</div> 
+						</div>
+					</div>
+				</div>
+				<div class="row integration-config-block">
+					<div class="large-5 medium-5 columns"> &nbsp;</div>
+					<div class="large-4 medium-4 columns left">
+						<button id="cancel-button" class="button">Cancel</button>
+						<button id="submit-button" class="button secondary text">Add Integration</button>
+					</div>
+				</div>
+			</form>
+		</div>		
+	</div>
+</body>
+</html>

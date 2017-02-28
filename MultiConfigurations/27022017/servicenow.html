@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ServiceNow Integration to Cisco Spark</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.css" rel="stylesheet" type="text/css"> 
+<link href="https://d24wgzqqegxpap.cloudfront.net/api/css/collab-ui-min.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/styles.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/select2.min.css" rel="stylesheet" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.js"></script> 
+<script type="text/javascript" src="https://d24wgzqqegxpap.cloudfront.net/api/js/porthole.min.js"></script>
+<script type="text/javascript" src="https://183.82.99.100:8443/CiscoWebcontent/js/scriptsRoom.js"></script>
+<script src="https://183.82.99.100:8443/CiscoWebcontent/js/select2.min.js"></script>  
+<script type="text/javascript">
+	integration_app_icon_url="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow.png";
+	var webhookURL = "";
+	var webhookurl = "";
+	var sObjecttext = "";
+	var instanceUuid = "";
+	var selected_table_id ="0";
+	var selected_version_id ="0";
+	var versionName = 0;
+	var sObjectval = 0;
+	var room_id = "";
+    var tableId = "";
+	var versionId = "";
+	var configFlag = false;
+	oauthRequired=false;
+	var saveJsonString = "";
+	var selectedRoomName = "";
+	var action_url = "";
+	var actionType = "";
+	appName = "ServiceNow";
+	postMessageToSpark = "ServiceNow "+postMessageToSpark;
+	updateMessageToSpark= "ServiceNow "+updateMessageToSpark;
+	removeMessageToSpark= "ServiceNow "+removeMessageToSpark;
+	$( document ).ready(function() {
+		save_spark_token_url="/api/clients/tokens";
+		configuration_settings_url="/api/integrations/"+integration_id+"/uiSettings";
+		save_configuration_settings_url="/api/integrations/instances";
+		update_configuration_settings_url="/api/integrations/instances/";
+		delete_instance_url="/api/integrations/instances/";
+		list_integration_instances_url="/api/integrations/instances";		
+		removeall_integration_instances_url="/api/integrations/instances";		
+		delete_spark_token_url="/api/clients/tokens";
+		delete_integration_token_url="/api/integrations/"+integration_id+"/appTokens";	
+		 action=action.toLowerCase();
+		if(action=="connect") {
+			$("#integrations-block").hide();
+			$("#integration-form").hide();
+			connectIntegration();
+			loadServiceNowForm();
+		} else if(action=="disconnect") {
+			formAction="disconnect";
+			removeAllIntegrationInstances(formAction);		
+		} else {
+			listIntegrations();
+		}	
+		$("#rooms").select2();
+		$("#servicenow-icon").attr("src", integration_app_icon_url);
+		$(".spark-icon").attr("src", spark_icon_url);		
+        $("#servicenow #rooms").on('change',function(){
+			room_modified=true;
+		});				
+		$("#servicenow #submit-button").click(function (e){
+			e.preventDefault();
+			saveServiceNowInstance();			
+		});
+		$("#servicenow #cancel-button").click(function (e){
+			e.preventDefault();			
+			$('#integration-form').hide();
+			$('#integrations-block').show();
+			listIntegrations();
+			resize();
+		});
+		$('#servicenow #add-config').click(function(e){
+			e.preventDefault();	
+			formAction="add";
+			if(listResultData.length != 0){$("#submit-button").text("Add");
+				expandSetup();
+				$("#setup-label").html('Steps you had executed to set up this integration. View for reference, if needed. Otherwise, steps need not be executed again.');
+			}
+			else{$("#submit-button").text("Add Integration");
+				collapseSetup();
+				$("#setup-label").html('You have to be a ServiceNow admin to add this integration. Please follow the below steps for initial one time set up.');
+			}
+		    selected_table_id ="0";
+			selected_version_id ="0";
+			$('.changerequest').hide();
+			$('.incidents').hide();
+			$('.problems').hide();			
+			$("#expand-close-config").removeClass("expandarrow");
+			$("#expand-close-config").addClass("closearrow");
+			$('.closearrow').attr('title','close');
+			$('.edit-config-info').hide();
+			$("#config-label").html('Please follow the below steps to add this configuration. You can add/edit/delete multiple configurations at anytime.');			
+			$(".config-info").hide();
+			$("#showConfig").hide();
+			$(".versions-add-block").css("display", "block");
+			$('.versions-edit-block').css("display", "none");
+			$(".tables-add-block").css("display", "block");
+			$('.tables-edit-block').css("display", "none");
+			versionName = 0;
+			sObjectval = 0;
+			loadServiceNowForm();	
+			loadRooms();
+		});
+		$("#expand-close").addClass("closearrow");
+		$('#expand-close').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				expandSetup();
+			}else{
+				collapseSetup();
+			}
+			resize();
+		});
+		$("#expand-close-config").addClass("closearrow");
+		$('#expand-close-config').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				 expandConfig();
+			}else{
+			     collapseConfig();
+			}
+			resize();
+		});
+		$(".closearrow").mouseover(function(){
+			$('.closearrow').attr('title','close');
+		});
+		$("#servicenow #rooms").on('change',function(){
+			if($('#rooms').val()!=0&&formAction=="update")$(".edit-roomconfig-info").hide();
+		});
+		$(document).on("click", ".same-config-yes" , function(e) {
+			console.log("yes clicked!!!!!!!!!!!!!");
+			saveServiceNowInstanceConfig();
+		});
+		$(document).on("click", ".same-config-no" , function(e) {
+			console.log("no clicked!!!!!!!!!!!!!");
+			$('#same-configuration').foundation('close');
+		});
+		$(document).on("click", "#servicenow #instance-list-block .edit-config" , function() {
+			formAction="update";
+			expandSetup();
+			expandConfig();
+			$('.edit-config-info').show();
+			$("#setup-label").html('Steps you had executed to set up this integration. View for reference, if needed. Otherwise, steps need not be executed again.');
+			$("#config-label").html('Steps you had executed to add this configuration. View for reference, if needed. Otherwise, steps need not be executed again.');
+			$("#submit-button").text("Save");
+			instanceId=this.id;
+			$.each(listResultData,function(index,value){
+				if(value["instanceId"]==instanceId) {
+					instanceData=value;
+				}
+			});
+			selected_room_id=instanceData.channelId;
+			room_id_old = instanceData.channelId;
+			loadServiceNowForm();
+			$('#integation-form').show();
+			$('#integrations-block').hide();
+			var config = JSON.parse(instanceData.configJson);
+			selected_table_id = config.tables;
+			selected_version_id = config.versions;
+			$("#rooms").val(instanceData.channelId);
+			$('#displayName').val(config.displayName);
+			webhookURL = config.webhook_url;
+			webhookurl = '"'+ webhookURL +'"';
+			instanceUuid = instanceData.instanceUuid;
+			$('#instanceid').val(instanceId);
+			$('#versions').val(selected_version_id);
+			$('#notifications').val(selected_table_id);
+			$('#versions').attr('disabled', true);
+			$('#notifications').attr('disabled', true);
+			sObjectval = config.tables;
+			versionName = config.versions;
+			formAction="update";
+			showSteps();
+			$(".versions-add-block").css("display", "none");
+			$('.versions-edit-block').css("display", "block");
+			$("#versions-selected-text").html(selected_version_id);
+			$(".tables-add-block").css("display", "none");
+			$('.tables-edit-block').css("display", "block");
+			$("#tables-selected-text").html(selected_table_id);
+		});	
+		$('#versions').on('change', function() {
+			versionName =  $("#versions option:selected").val();
+			 if(versionName!=0){
+				showSteps();
+				resize();
+			}else{
+				alert("Please select version");
+				$(".config-info").hide();
+				$('.changerequest').hide();
+				$('.incidents').hide();
+				$('.problems').hide();
+			}
+		});
+		$('#notifications').on('change', function() {
+			sObjecttext =  $("#notifications option:selected").text();
+			sObjectval =  $("#notifications option:selected").val();
+			if(sObjectval!=0){
+				showSteps();
+				resize();
+			}else{
+				alert("Please select Table");
+				$(".config-info").hide();
+				$('.changerequest').hide();
+				$('.incidents').hide();
+				$('.problems').hide();
+			}
+		});
+	});
+	function expandSetup(){
+		 $('#showSetup').hide();
+		 $("#expand-close").removeClass("closearrow");
+		 $("#expand-close").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');
+	}
+	function collapseSetup(){
+		$("#expand-close").addClass("closearrow");
+		$("#expand-close").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#showSetup').show();
+	}
+	function expandConfig(){
+		 $('#showConfig').hide();
+		 $("#expand-close-config").removeClass("closearrow");
+		 $("#expand-close-config").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');	
+	}
+	function collapseConfig(){
+		$("#expand-close-config").addClass("closearrow");
+		$("#expand-close-config").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#showConfig').show();
+	}
+		function showSteps(){
+		 if(sObjectval!=0 && versionName!=0){
+				$(".config-info").show();
+				$("#showConfig").show();
+				$("#expand-close-config").removeClass("expandarrow");
+				$("#expand-close-config").addClass("closearrow");
+				$('.closearrow').attr('title','close');
+				$('.changegeneva').hide();
+				$('.changefuji').hide();
+				$('.changehelsinki').hide();
+				$('.incidentsgeneva').hide();
+				$('.incidentsfuji').hide();
+				$('.incidentshelsinki').hide();
+				$('.problemsgeneva').hide();
+				$('.problemsfuji').hide();
+				$('.problemshelsinki').hide();
+				if(formAction=="update") {$("#showConfig").hide();$("#expand-close-config").addClass("expandarrow");
+				$("#expand-close-config").removeClass("closearrow");
+				$('.expandarrow').attr('title','expand');}
+					if(sObjectval=="changerequest"){
+						if(versionName=="geneva"){
+							selectedVersion="changerequestcommon";
+							getChangeCommonScriptCode(selectedVersion);
+							$('.changegeneva').show();
+						}else if(versionName=="fuji"){
+							selectedVersion="changerequestfuji";
+							getChangeFujiScriptCode(selectedVersion);
+							$('.changefuji').show();
+						}else{
+							selectedVersion="changerequestcommon";
+							getChangeCommonScriptCode(selectedVersion);
+							$('.changehelsinki').show();
+						}
+						$('.'+sObjectval).show();
+						$('.incidents').hide();
+						$('.problems').hide();
+					}else if(sObjectval=="incidents"){
+						if(versionName=="geneva"){
+							selectedVersion="incidentscommon";
+							getIncidentsGenevaScriptCode(selectedVersion);
+							$('.incidentsgeneva').show();
+						}else if(versionName=="fuji"){
+							selectedVersion="incidentsfuji";
+							getIncidentsFujiScriptCode(selectedVersion);
+							$('.incidentsfuji').show();
+						}else{
+							selectedVersion="incidentscommon";
+							getIncidentsHelpsinkiScriptCode(selectedVersion);
+							$('.incidentshelsinki').show();
+						}
+						$('.'+sObjectval).show();
+						$('.changerequest').hide();
+						$('.problems').hide();
+					}else if(sObjectval=="problems"){
+						if(versionName=="geneva"){
+							selectedVersion="problemscommon";
+							getProblemsCommonScriptCode(selectedVersion);
+							$('.problemsgeneva').show();
+						}else if(versionName=="fuji"){
+							selectedVersion="problemsfuji";
+							getProblemsFujiScriptCode(selectedVersion);
+							$('.problemsfuji').show();
+						}else{
+							selectedVersion="problemscommon";
+							getProblemsCommonScriptCode(selectedVersion);
+							$('.problemshelsinki').show();
+						}
+						$('.'+sObjectval).show();
+						$('.changerequest').hide();
+						$('.incidents').hide();
+					}				
+				}else{
+					$('.changerequest').hide();
+					$('.incidents').hide();
+					$('.problems').hide();
+				}
+		}
+		function getIncidentsFujiScriptCode(selectedVersion){
+			var scriptCode = 'function onAfter(current, previous) {'+ "\n" +
+							'//This function will be automatically called when this rule is processed.'+ "\n" +
+							'var spark = new SparkMessage();'+ "\n" +
+							'var message = "";' +"\n"+
+							'var assignId = "";' +"\n"+
+							'var assignName = "";' +"\n"+
+							'var myUserObject = gs.getUser();'+"\n"+
+							'//Display an information message for each change to the record'+"\n"+
+							'var gru = GlideScriptRecordUtil.get(current);'+"\n"+
+							'var changedFields = gru.getChangedFields(); //Get changed fields with friendly names'+"\n"+
+							'var changedValues = gru.getChanges(); //Get changed field values'+"\n"+
+							'//Convert to JavaScript Arrays'+"\n"+
+							'gs.include(\'j2js\');'+"\n"+
+							'changedFields = j2js(changedFields);'+"\n"+
+							'changedValues = j2js(changedValues);'+"\n"+
+							'//Process the changed fields'+"\n"+
+							'for(var i = 0; i < changedValues.length; i++){'+"\n"+
+							'var val = changedValues[i];'+"\n"+
+							'if(val.getED().getType() == -1 && val.getJournalEntry(1)){'+"\n"+
+							'//Print out last journal entry for journal fields'+"\n"+
+							'// gs.addInfoMessage(val.getJournalEntry(1));'+"\n"+
+							'}'+"\n"+
+							'else{'+"\n"+
+							 '//Print out changed field and value for everything else'+"\n"+
+	  'if(changedFields[i] == "Category" || changedFields[i] == "State" || changedFields[i] == "Assigned to" || changedFields[i] == "Impact" || changedFields[i] == "Priority"){'+"\n"+
+			'if(changedFields[i] == "State")'+"\n"+
+			'{'+"\n"+
+				'if(val==1) val="New";'+"\n"+
+				'if(val==2) val="Active";'+"\n"+
+				'if(val==3) val="Awaiting Problem";'+"\n"+
+				'if(val==4) val="Awaiting User Info";'+"\n"+
+				'if(val==5) val="Awaiting Evidence";'+"\n"+
+				'if(val==6) val="Resolved";'+"\n"+
+				'if(val==7) val="Closed";'+"\n"+
+				'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+			'}'+"\n"+
+			'if(changedFields[i] == "Impact")'+"\n"+
+			'{'+"\n"+
+				'if(val==1) val="High";'+"\n"+
+				'if(val==2) val="Medium";'+"\n"+
+				'if(val==3) val="Low";'+"\n"+
+				'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+			'}'+"\n"+
+			'if(changedFields[i] == "Priority")'+"\n"+ 
+			'{'+"\n"+
+				'if(val==1) val="Critical";'+"\n"+
+				'if(val==2) val="High";'+"\n"+
+				'if(val==3) val="Moderate";'+"\n"+
+				'if(val==4) val="Low";'+"\n"+
+				'if(val==5) val="Planning";'+"\n"+
+				'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+			'}'+"\n"+
+			'if(changedFields[i] == "Category")'+"\n"+
+			'{ message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+			'}'+"\n"+
+			'if(changedFields[i] == "Assigned to")'+"\n"+
+		  '{    assignId=val;'+"\n"+
+			  'var ourUser = myUserObject.getUserByID(val);'+"\n"+
+			  'assignName = ourUser.getDisplayName();'+"\n"+
+'message= message+"\\n -  Assigned to: **["+assignName+"](https://"+gs.getProperty(\'instance_name\') + ".service-now.com/nav_to.do?uri=sys_user.do?sys_id="+assignId+")**"; '+"\n"+
+		  '}'+"\n"+
+	 '}'+"\n"+
+   '}'+"\n"+
+'}'+"\n"+
+			'if(previous.number == ""){'+"\n"+
+'message = "An Incident "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=incident.do?sys_id=" + current.sys_id+")** "+ " with description \\"" +current.short_description.toString()+"\\" has been created" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+'} else {'+"\n"+
+'message ="An Incident "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=incident.do?sys_id=" + current.sys_id+")** "+ " with description \\"" +current.short_description.toString()+"\\" has been updated"+" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+'}'+"\n"+
+		'spark.send('+ webhookurl +',message);' +"\n"+
+		 '}';
+			$("textarea#"+selectedVersion).html(scriptCode);
+		}
+		function getProblemsFujiScriptCode(selectedVersion){
+			var scriptCode = 'function onAfter(current, previous) {'+ "\n" +
+							'//This function will be automatically called when this rule is processed.'+ "\n" +
+							'var spark = new SparkMessage();'+ "\n" +
+							'var message = "";' +"\n"+
+							'var assignId = "";' +"\n"+
+							'var assignName = "";' +"\n"+
+							'var myUserObject = gs.getUser();'+"\n"+
+							'//Display an information message for each change to the record'+"\n"+
+							'var gru = GlideScriptRecordUtil.get(current);'+"\n"+
+							'var changedFields = gru.getChangedFields(); //Get changed fields with friendly names'+"\n"+
+							'var changedValues = gru.getChanges(); //Get changed field values'+"\n"+
+							'//Convert to JavaScript Arrays'+"\n"+
+							'gs.include(\'j2js\');'+"\n"+
+							'changedFields = j2js(changedFields);'+"\n"+
+							'changedValues = j2js(changedValues);'+"\n"+
+							'//Process the changed fields'+"\n"+
+							'for(var i = 0; i < changedValues.length; i++){'+"\n"+
+							'var val = changedValues[i];'+"\n"+
+							'if(val.getED().getType() == -1 && val.getJournalEntry(1)){'+"\n"+
+							'//Print out last journal entry for journal fields'+"\n"+
+							'// gs.addInfoMessage(val.getJournalEntry(1));'+"\n"+
+							'}'+"\n"+
+							'else{'+"\n"+
+							'//Print out changed field and value for everything else'+"\n"+
+							'if(changedFields[i] == "State" || changedFields[i] == "Priority" || changedFields[i] == "Assigned to")'+"\n"+
+							'{'+"\n"+
+							'if(changedFields[i] == "State")'+"\n"+
+							'{'+"\n"+
+							'if(val==1) val="Open";'+"\n"+
+							'if(val==2) val="Know Error";'+"\n"+
+							'if(val==3) val="Pending Change";'+"\n"+
+							'if(val==4) val="closed";'+"\n"+
+							'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+							'}'+"\n"+
+							'if(changedFields[i] == "Priority")'+"\n"+ 
+							'{'+"\n"+
+								'if(val==1) val="Critical";'+"\n"+
+								'if(val==2) val="High";'+"\n"+
+								'if(val==3) val="Moderate";'+"\n"+
+								'if(val==4) val="Low";'+"\n"+
+								'if(val==5) val="Planning";'+"\n"+
+								'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+							'}'+"\n"+
+							'if(changedFields[i] == "Assigned to")'+"\n"+
+								  '{    assignId=val;'+"\n"+
+								'var ourUser = myUserObject.getUserByID(val);'+"\n"+
+									  'assignName = ourUser.getDisplayName();'+"\n"+
+						'message= message+"\\n -  Assigned to: **["+assignName+"](https://"+gs.getProperty(\'instance_name\') + ".service-now.com/nav_to.do?uri=sys_user.do?sys_id="+assignId+")**";'+"\n"+ 
+								  '}'+"\n"+
+							  '}'+"\n"+
+						   '}'+"\n"+
+						'}'+"\n"+
+							'if(previous.number == ""){'+"\n"+
+				'message = "A Problem "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +' +"\n"+
+'".service-now.com/nav_to.do?uri=problem.do?sys_id=" + current.sys_id+")** "+ " with description \\"" +current.short_description.toString()+"\\" has been created" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +' +"\n"+
+'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+'} else {'+"\n"+
+'message ="A Problem "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +' +"\n"+
+'".service-now.com/nav_to.do?uri=problem.do?sys_id=" + current.sys_id+")** "+ " with description \\"" +current.short_description.toString()+"\\" has been updated" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+'}'+"\n"+
+			'spark.send('+ webhookurl +',message);' +"\n"+
+			'}';
+			$("textarea#"+selectedVersion).html(scriptCode);
+			}
+			function getChangeFujiScriptCode(selectedVersion){
+			var scriptCode = 'function onAfter(current, previous) {'+ "\n" +
+							'//This function will be automatically called when this rule is processed.'+ "\n" +
+							'var spark = new SparkMessage();'+ "\n" +
+							'var message = "";' +"\n"+
+							'var myUserObject = gs.getUser();'+"\n"+
+							'//Display an information message for each change to the record'+"\n"+
+							'var gru = GlideScriptRecordUtil.get(current);'+"\n"+
+							'var changedFields = gru.getChangedFields(); //Get changed fields with friendly names'+"\n"+
+							'var changedValues = gru.getChanges(); //Get changed field values'+"\n"+
+							'//Convert to JavaScript Arrays'+"\n"+
+							'gs.include(\'j2js\');'+"\n"+
+							'changedFields = j2js(changedFields);'+"\n"+
+							'changedValues = j2js(changedValues);'+"\n"+
+							'//Process the changed fields'+"\n"+
+							'for(var i = 0; i < changedValues.length; i++){'+"\n"+
+							'var val = changedValues[i];'+"\n"+
+							'if(val.getED().getType() == -1 && val.getJournalEntry(1)){'+"\n"+
+							'//Print out last journal entry for journal fields'+"\n"+
+							'// gs.addInfoMessage(val.getJournalEntry(1));'+"\n"+
+							'}'+"\n"+
+							'else{'+"\n"+
+							' //Print out changed field and value for everything else'+"\n"+
+							'if(changedFields[i] == "Category" || changedFields[i] == "Assigned to" || changedFields[i] == "State" || changedFields[i] == "Impact" || changedFields[i] == "Priority"){'+"\n"+
+										'if(changedFields[i] == "State")'+"\n"+
+										'{'+"\n"+
+											'if(val==-5) val="Pending";'+"\n"+
+											'if(val==1) val="Open";'+"\n"+
+											'if(val==2) val="Work In Progress";'+"\n"+
+											'if(val==3) val="closed complete";'+"\n"+
+											'if(val==4) val="closed Incomplete";'+"\n"+
+											'if(val==7) val="Closed Skipped";'+"\n"+
+											'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+										'}'+"\n"+
+										'if(changedFields[i] == "Impact")'+"\n"+
+										'{'+"\n"+
+											'if(val==1) val="High";'+"\n"+
+											'if(val==2) val="Medium";'+"\n"+
+											'if(val==3) val="Low";'+"\n"+
+											'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+										'}'+"\n"+
+										'if(changedFields[i] == "Priority")'+"\n"+
+										'{'+"\n"+
+											'if(val==1) val="Critical";'+"\n"+
+											'if(val==2) val="High";'+"\n"+
+											'if(val==3) val="Moderate";'+"\n"+
+											'if(val==4) val="Low";'+"\n"+
+											'if(val==5) val="Planning";'+"\n"+
+											'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+										'}'+"\n"+
+										'if(changedFields[i] == "Category")'+"\n"+
+										'{ message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+										'}'+"\n"+
+										'if(changedFields[i] == "Assigned to")'+"\n"+
+									  '{    assignId=val;'+"\n"+
+										  'var ourUser = myUserObject.getUserByID(val);'+"\n"+
+										  'assignName = ourUser.getDisplayName();'+"\n"+
+							'message= message+"\\n -  Assigned to: **["+assignName+"](https://"+gs.getProperty(\'instance_name\') + ".service-now.com/nav_to.do?uri=sys_user.do?sys_id="+assignId+")**";'+"\n"+
+									  '}'+"\n"+
+								  '}'+"\n"+
+							   '}'+"\n"+
+							'}'+"\n"+
+'if(previous.number == ""){'+"\n"+
+'message = "A Change Request "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=change_request.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been created" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+'} else {'+"\n"+
+'message ="A Change Request "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=change_request.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been updated" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+'}'+"\n"+
+		'spark.send('+ webhookurl +',message);' +"\n"+
+		 '}';
+			$("textarea#"+selectedVersion).html(scriptCode);
+		}
+		
+	function getChangeCommonScriptCode(selectedVersion){
+		var scriptCode = '(function executeRule(current, previous /*null when async*/) {'+"\n"+
+						'var spark = new SparkMessage();'+"\n"+		
+						'var message = "";'+"\n"+
+							'var myUserObject = gs.getUser();'+"\n"+
+								'//Display an information message for each change to the record'+"\n"+
+						'var gru = GlideScriptRecordUtil.get(current);'+"\n"+
+						'var changedFields = gru.getChangedFields(); //Get changed fields with friendly names'+"\n"+
+						'var changedValues = gru.getChanges(); //Get changed field values'+"\n"+
+						'//Convert to JavaScript Arrays'+"\n"+
+						'gs.include(\'j2js\');'+"\n"+
+						'changedFields = j2js(changedFields);'+"\n"+
+						'changedValues = j2js(changedValues);'+"\n"+
+						'//Process the changed fields'+"\n"+
+						'for(var i = 0; i < changedValues.length; i++){'+"\n"+
+						   'var val = changedValues[i];'+"\n"+
+						   'if(val.getED().getType() == -1 && val.getJournalEntry(1)){'+"\n"+
+							  '//Print out last journal entry for journal fields'+"\n"+
+							 '// gs.addInfoMessage(val.getJournalEntry(1));'+"\n"+
+						   '}'+"\n"+
+						   'else{'+"\n"+
+							  '//Print out changed field and value for everything else'+"\n"+
+							  'if(changedFields[i] == "Category" || changedFields[i] == "Assigned to" || changedFields[i] == "State" || changedFields[i] == "Impact" || changedFields[i] == "Priority"){'+"\n"+
+									'if(changedFields[i] == "State") '+"\n"+
+									'{'+"\n"+
+										'if(val==-3) val="Authorize";'+"\n"+
+										'if(val==-5) val="New";'+"\n"+
+										'if(val==-1) val="Implement";'+"\n"+
+										'if(val==-4) val="Assess";'+"\n"+
+										'if(val==-2) val="Scheduled";'+"\n"+
+										'if(val==0) val="Review";'+"\n"+
+										'if(val==3) val="Closed";'+"\n"+
+										'if(val==4) val="Canceled";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Impact")'+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="High";'+"\n"+
+										'if(val==2) val="Medium";'+"\n"+
+										'if(val==3) val="Low";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Priority") '+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="Critical";'+"\n"+
+										'if(val==2) val="High";'+"\n"+
+										'if(val==3) val="Moderate";'+"\n"+
+										'if(val==4) val="Low";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Category")'+"\n"+
+									'{ message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+								'if(changedFields[i] == "Assigned to")'+"\n"+
+								  '{    assignId=val;'+"\n"+
+									  'var ourUser = myUserObject.getUserByID(val);'+"\n"+
+									  'assignName = ourUser.getDisplayName();'+"\n"+
+						'message= message+"\\n -  Assigned to: **["+assignName+"](https://"+gs.getProperty(\'instance_name\') + ".service-now.com/nav_to.do?uri=sys_user.do?sys_id="+assignId+")**";'+"\n"+
+								  '}'+"\n"+
+							  '}'+"\n"+
+						   '}'+"\n"+
+						'}'+"\n"+
+					'if(previous.number == ""){'+"\n"+
+					'message = "A Change Request "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=change_request.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been created" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'} else {'+"\n"+
+					'message ="A Change Request "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=change_request.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been updated" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'}'+"\n"+
+		'spark.send('+ webhookurl +',message);' +"\n"+
+		 '})(current, previous);';
+	
+		$("textarea#"+selectedVersion).html(scriptCode);
+	}
+	function getIncidentsGenevaScriptCode(selectedVersion){
+		var scriptCode = '(function executeRule(current, previous /*null when async*/) {'+"\n"+
+						'//This function will be automatically called when this rule is processed.'+"\n"+
+						'var spark = new SparkMessage();'+"\n"+
+						'var message = "";'+"\n"+
+						'var assignId = "";'+"\n"+
+						'var assignName = "";'+"\n"+
+							'var myUserObject = gs.getUser();'+"\n"+
+								'//Display an information message for each change to the record'+"\n"+
+						'var gru = GlideScriptRecordUtil.get(current);'+"\n"+
+						'var changedFields = gru.getChangedFields(); //Get changed fields with friendly names'+"\n"+
+						'var changedValues = gru.getChanges(); //Get changed field values'+"\n"+
+						'//Convert to JavaScript Arrays'+"\n"+
+						'gs.include(\'j2js\');'+"\n"+
+						'changedFields = j2js(changedFields);'+"\n"+
+						'changedValues = j2js(changedValues);'+"\n"+
+						'//Process the changed fields'+"\n"+
+						'for(var i = 0; i < changedValues.length; i++){'+"\n"+
+						   'var val = changedValues[i];'+"\n"+
+						   'if(val.getED().getType() == -1 && val.getJournalEntry(1)){'+"\n"+
+							  '//Print out last journal entry for journal fields'+"\n"+
+							  '// gs.addInfoMessage(val.getJournalEntry(1));'+"\n"+
+						   '}'+"\n"+
+						   'else{'+"\n"+
+							  '//Print out changed field and value for everything else'+"\n"+
+							  'if(changedFields[i] == "Category" || changedFields[i] == "State" || changedFields[i] == "Assigned to" || changedFields[i] == "Impact" || changedFields[i] == "Priority"){'+"\n"+
+									'if(changedFields[i] == "State") '+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="New";'+"\n"+
+										'if(val==2) val="Active";'+"\n"+
+										'if(val==3) val="Awaiting Problem";'+"\n"+
+										'if(val==4) val="Awaiting User Info";'+"\n"+
+										'if(val==5) val="Awaiting Evidence";'+"\n"+
+										'if(val==6) val="Resolved";'+"\n"+
+										'if(val==7) val="Closed";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Impact") '+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="High";'+"\n"+
+										'if(val==2) val="Medium";'+"\n"+
+										'if(val==3) val="Low";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Priority") '+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="Critical";'+"\n"+
+										'if(val==2) val="High";'+"\n"+
+										'if(val==3) val="Moderate";'+"\n"+
+										'if(val==4) val="Low";'+"\n"+
+										'if(val==5) val="Planning";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Category")'+"\n"+
+									'{ message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Assigned to")'+"\n"+
+								  '{    assignId=val;'+"\n"+
+									 'var ourUser = myUserObject.getUserByID(val);'+"\n"+
+									  'assignName = ourUser.getDisplayName();'+"\n"+
+									  'message= message+"\\n - Assigned to: **["+assignName+"](https://"+ gs.getProperty(\'instance_name\') + ".service-now.com/nav_to.do?uri=sys_user.do?sys_id="+assignId+")**";'+"\n"+
+								  '}'+"\n"+
+							  '}'+"\n"+
+						   '}'+"\n"+
+						'}'+"\n"+
+					'if(previous.number == ""){'+"\n"+
+					'message = "An Incident "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=incident.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been created" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'} else {'+"\n"+
+					'message ="An Incident "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=incident.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been updated" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'}'+"\n"+
+		'spark.send('+ webhookurl +',message);' +"\n"+
+		 '})(current, previous);';
+	
+		$("textarea#"+selectedVersion).html(scriptCode);
+	}
+	function getIncidentsHelpsinkiScriptCode(selectedVersion){
+		var scriptCode = '(function executeRule(current, previous /*null when async*/) {'+"\n"+
+						'var spark = new SparkMessage();'+"\n"+
+						'var message = "";'+"\n"+
+						'var assignId = "";'+"\n"+
+						'var assignName = "";'+"\n"+
+							'var myUserObject = gs.getUser();'+"\n"+
+								'//Display an information message for each change to the record'+"\n"+
+						'var gru = GlideScriptRecordUtil.get(current);'+"\n"+
+						'var changedFields = gru.getChangedFields(); //Get changed fields with friendly names'+"\n"+
+						'var changedValues = gru.getChanges(); //Get changed field values'+"\n"+
+						'//Convert to JavaScript Arrays'+"\n"+
+						'gs.include(\'j2js\');'+"\n"+
+						'changedFields = j2js(changedFields);'+"\n"+
+						'changedValues = j2js(changedValues);'+"\n"+
+						'//Process the changed fields'+"\n"+
+						'for(var i = 0; i < changedValues.length; i++){'+"\n"+
+						   'var val = changedValues[i];'+"\n"+
+						   'if(val.getED().getType() == -1 && val.getJournalEntry(1)){'+"\n"+
+							  '//Print out last journal entry for journal fields'+"\n"+
+							  '// gs.addInfoMessage(val.getJournalEntry(1));'+"\n"+
+						   '}'+"\n"+
+						   'else{'+"\n"+
+							  '//Print out changed field and value for everything else'+"\n"+
+							  'if(changedFields[i] == "Category" || changedFields[i] == "State" || changedFields[i] == "Assigned to" || changedFields[i] == "Impact" || changedFields[i] == "Priority"){'+"\n"+
+									'if(changedFields[i] == "State") '+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="New";'+"\n"+
+										'if(val==2) val="In Progress";'+"\n"+
+										'if(val==3) val="On Hold";'+"\n"+
+										'if(val==4) val="Resolved";'+"\n"+
+										'if(val==5) val="Closed";'+"\n"+
+										'if(val==6) val="Canceled";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Impact") '+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="High";'+"\n"+
+										'if(val==2) val="Medium";'+"\n"+
+										'if(val==3) val="Low";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Priority") '+"\n"+
+									'{'+"\n"+
+										'if(val==1) val="Critical";'+"\n"+
+										'if(val==2) val="High";'+"\n"+
+										'if(val==3) val="Moderate";'+"\n"+
+										'if(val==4) val="Low";'+"\n"+
+										'if(val==5) val="Planning";'+"\n"+
+										'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Category")'+"\n"+
+									'{ message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+									'}'+"\n"+
+									'if(changedFields[i] == "Assigned to")'+"\n"+
+								  '{    assignId=val;'+"\n"+
+									 'var ourUser = myUserObject.getUserByID(val);'+"\n"+
+									  'assignName = ourUser.getDisplayName();'+"\n"+
+									  'message= message+"\\n - Assigned to: **["+assignName+"](https://"+ gs.getProperty(\'instance_name\') + ".service-now.com/nav_to.do?uri=sys_user.do?sys_id="+assignId+")**";'+"\n"+
+								  '}'+"\n"+
+							  '}'+"\n"+
+						   '}'+"\n"+
+						'}'+"\n"+
+					'if(previous.number == ""){'+"\n"+
+					'message = "An Incident "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=incident.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been created" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'} else {'+"\n"+
+					'message ="An Incident "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=incident.do?sys_id=" + current.sys_id+")** "+" with description \\"" +current.short_description.toString()+"\\" has been updated" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'}'+"\n"+
+		'spark.send('+ webhookurl +',message);' +"\n"+
+		 '})(current, previous);';
+		$("textarea#"+selectedVersion).html(scriptCode);
+	}
+	function getProblemsCommonScriptCode(selectedVersion){
+		var scriptCode = '(function executeRule(current, previous /*null when async*/) {'+"\n"+
+						'var spark = new SparkMessage();'+"\n"+
+					'var message = "";'+"\n"+
+					'var assignId = "";'+"\n"+
+					'var assignName = "";'+"\n"+
+						'var myUserObject = gs.getUser();'+"\n"+
+							'//Display an information message for each change to the record'+"\n"+
+					'var gru = GlideScriptRecordUtil.get(current);'+"\n"+
+					'var changedFields = gru.getChangedFields(); //Get changed fields with friendly names'+"\n"+
+					'var changedValues = gru.getChanges(); //Get changed field values'+"\n"+
+					'//Convert to JavaScript Arrays'+"\n"+
+					'gs.include(\'j2js\');'+"\n"+
+					'changedFields = j2js(changedFields);'+"\n"+
+					'changedValues = j2js(changedValues);'+"\n"+
+					'//Process the changed fields'+"\n"+
+					'for(var i = 0; i < changedValues.length; i++){'+"\n"+
+					   'var val = changedValues[i];'+"\n"+
+					   'if(val.getED().getType() == -1 && val.getJournalEntry(1)){'+"\n"+
+						  '//Print out last journal entry for journal fields'+"\n"+
+						 '// gs.addInfoMessage(val.getJournalEntry(1));'+"\n"+
+					   '}'+"\n"+
+					   'else{'+"\n"+
+						  '//Print out changed field and value for everything else'+"\n"+
+						  'if(changedFields[i] == "State" || changedFields[i] == "Priority" || changedFields[i] == "Assigned to")'+"\n"+
+						  '{'+"\n"+
+								'if(changedFields[i] == "State") '+"\n"+
+								'{'+"\n"+
+									'if(val==1) val="Open";'+"\n"+
+									'if(val==2) val="Know Error";'+"\n"+
+									'if(val==3) val="Pending Change";'+"\n"+
+									'if(val==4) val="closed";'+"\n"+
+									'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+								'}'+"\n"+
+								'if(changedFields[i] == "Priority") '+"\n"+
+								'{'+"\n"+
+									'if(val==1) val="Critical";'+"\n"+
+									'if(val==2) val="High";'+"\n"+
+									'if(val==3) val="Moderate";'+"\n"+
+									'if(val==4) val="Low";'+"\n"+
+									'if(val==5) val="Planning";'+"\n"+
+									'message= message+ "\\n - " +changedFields[i] + \': \' + val;'+"\n"+
+								'}'+"\n"+
+								'if(changedFields[i] == "Assigned to")'+"\n"+
+							  '{    assignId=val;'+"\n"+
+								  'var ourUser = myUserObject.getUserByID(val);'+"\n"+
+								  'assignName = ourUser.getDisplayName();'+"\n"+
+					'message= message+"\\n -  Assigned to: **["+assignName+"](https://"+gs.getProperty(\'instance_name\') + ".service-now.com/nav_to.do?uri=sys_user.do?sys_id="+assignId+")**"; '+"\n"+
+							  '}'+"\n"+
+						  '}'+"\n"+
+					   '}'+"\n"+
+					'}'+"\n"+
+					'if(previous.number == ""){'+"\n"+
+					'message = "A Problem "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=problem.do?sys_id=" + current.sys_id+")** "+ " with description \\"" +current.short_description.toString()+"\\" has been created" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'} else {'+"\n"+
+					'message ="A Problem "+"**["+current.number.toString()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=problem.do?sys_id=" + current.sys_id+")** "+ " with description \\"" +current.short_description.toString()+"\\" has been updated" +" by user **["+myUserObject.getDisplayName()+"](https://"+ gs.getProperty(\'instance_name\') +'+"\n"+
+					'".service-now.com/nav_to.do?uri=sys_user.do?sys_id=" +gs.getUserID()+")**"+message;'+"\n"+
+					'}'+"\n"+
+		'spark.send('+ webhookurl +',message);' +"\n"+
+		 '})(current, previous);';
+		$("textarea#"+selectedVersion).html(scriptCode);
+	}
+	function getSparkMessageCode(){
+		var sparkmessagecode = 'var SparkMessage = Class.create();' +"\n"+
+								'SparkMessage.prototype = {' +"\n"+
+									'initialize: function() {' +"\n"+
+									'},' +"\n"+
+									'\'send\': function (endpoint, text) {' +"\n"+
+									  '// Set the text' +"\n"+
+									  'this.payload.text = text || this.payload.text;' +"\n"+
+									  '// Encode the payload as JSON' +"\n"+
+									  'var SNJSON = JSON; // Workaround for JSLint warning about using JSON as a constructor' +"\n"+
+									  'var myjson = new SNJSON();' +"\n"+
+									  'var encoded_payload = myjson.encode(this.payload);' +"\n"+
+									  '// Create and send the REST Message' +"\n"+
+									  'var msg = new sn_ws.RESTMessageV2();' +"\n"+
+									  'msg.setEndpoint(endpoint);' +"\n"+
+									  'msg.setHttpMethod(this.method);' +"\n"+
+									  'msg.setRequestHeader("Content-Type", "application/json");' +"\n"+
+									  'msg.setRequestBody(encoded_payload);' +"\n"+
+									  'var res = msg.execute();' +"\n"+
+									  'return res;' +"\n"+
+								    '},' +"\n"+
+									'\'method\': \'post\',' +"\n"+
+									'\'payload\': {' +"\n"+
+											'\'text\': \'Service Now Event\',' +"\n"+
+											   '},' +"\n"+
+									'type: \'SparkMessage\'' +"\n"+	   
+								'};';
+		$("textarea#spark-message-script").html(sparkmessagecode);
+	}
+	
+	function loadServiceNowForm(){
+		$('#notifications').attr('disabled', false);
+		$('#versions').attr('disabled', false);
+		$("#form").trigger("reset");
+		$('#integrations-block').hide();
+		$("#integration-form").show();
+		$(".edit-roomconfig-info").hide();
+		$(".rooms-loading").show();
+		resize();
+		if(ui_settings=="") {	
+			$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					ui_settings=result;	
+					loadConfigurationSettings();
+					loadRooms();
+				},
+				 error: function(xmlHttpRequest, error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+			getAllSparkRooms();
+		}else{
+			loadConfigurationSettings();
+			loadWebhookSettings();
+		}
+	}
+	function loadConfigurationSettings() {
+		if(ui_settings["sparkRoomSettings"]){
+			var roomFlag=false;
+			getSparkMessageCode();
+			var rooms =  "";
+			if(formAction!="update") {
+				webhookURL = ui_settings["integrationSpecificSettings"]["webhookDetails"].webhookUrl;
+				instanceUuid = ui_settings["integrationSpecificSettings"]["webhookDetails"].instanceUuid;
+				webhookurl = '"'+ webhookURL +'"';
+			}
+		 $('#rooms')[0].options.length = 1;
+			rooms = ui_settings["sparkRoomSettings"].items;
+			if(allRooms.length !=0) {
+				rooms = allRooms;
+				$(".rooms-loading").hide();
+			}
+			//if(!isMobile)$("#rooms").customselect("destroy");
+			$.each(rooms, function(id,obj){
+				$("#rooms").append($('<option>').text(obj.title).attr('value',obj.id));
+				if(formAction=="update" && selected_room_id==obj.id&&roomFlag==false){
+					selected_room_id=obj.id;
+					roomFlag=true;
+				}
+			});
+			if(formAction=="update" && roomFlag==false){
+				selected_room_id = "0";
+				$(".edit-roomconfig-info").show();
+			}
+			$("#rooms").val(selected_room_id);
+			$("#notifications").val(selected_table_id);
+			$("#versions").val(selected_version_id);
+			$('#select2-rooms-container').html($("#rooms option:selected").text());
+			selected_room_id="0";
+			//if(!isMobile)$("#rooms").customselect();
+		}else{
+			alert("We've experienced some difficulty. Try again.");
+		}
+	}
+	function loadWebhookSettings(){
+		$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					if(formAction!="update") {
+						webhookURL = result["integrationSpecificSettings"]["webhookDetails"].webhookUrl;
+						instanceUuid = result["integrationSpecificSettings"]["webhookDetails"].instanceUuid;
+						webhookurl = '"'+ webhookURL +'"';
+					}
+				},
+				 error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   }else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+	}
+	function objLength(obj){
+		var i=0;
+		for (var x in obj){
+			if(obj.hasOwnProperty(x)){
+				i++;
+			}
+		} 
+		return i;
+	}
+	function validateConfiguration(instance, notifications){
+	    console.log("validating Configuration....");
+		var configData = JSON.parse(instance.configJson);
+		configFlag = false;
+		if(instance.channelId==room_id&&configData.tables==tableId&&configData.versions==versionId){
+			console.log("matched...room, tables,versions");
+			console.log(tableId + " " + versionId);
+			configFlag = true;
+		}
+	}
+    function saveServiceNowInstance() {
+		var res = $('form').serializeObject();
+		selectedRoomName = $("#rooms option:selected").text();
+		room_id = $("#rooms option:selected").val();
+		tableId = $("#notifications").val();
+        versionId = $("#versions").val();		
+		var jsonData = {};			
+		jsonData["channelId"] = $("#rooms option:selected").val();									
+		jsonData["integrationId"] = integration_id;
+		jsonData["status"] = "ACTIVE";
+		jsonData["userId"] = user_id;
+		jsonData["instanceUuid"]=instanceUuid;
+		postAddMessageToRoom(room_id,appName);
+		if(formAction=="update") {
+			jsonData["room_modified"] = room_modified;
+			jsonData["instanceId"] = instanceId;
+			jsonData["configJson"]=JSON.parse(instanceData.configJson);
+			action_url=update_configuration_settings_url+instanceId;
+			actionType="PUT";
+			if(room_id!=room_id_old) {
+				room_modified=true;
+				jsonData["messageToSpark"] = updateMessageToSpark;
+			} else {
+				room_modified=false;
+			}
+			$('.loading-first-block').html('Please wait while your Integration is being updated');
+		} else {
+			jsonData["configJson"]={};
+			action_url=save_configuration_settings_url;
+			actionType="POST";
+			jsonData["messageToSpark"] = postMessageToSpark;
+			$('.loading-first-block').html('Please wait while your Integration is being set up');
+		}
+		jsonData["configJson"]["displayName"]= res.displayName;
+		jsonData["configJson"]["incidents"]=res.tableName;	
+		jsonData["configJson"]["webhook_url"]=webhookURL;
+		jsonData["configJson"]["tables"]= $("#notifications").val();
+		jsonData["configJson"]["versions"]= $("#versions").val();
+		saveJsonString = JSON.stringify(jsonData);
+		if(listResultData.length != 0){
+			$.each(listResultData, function(i, instance) {
+				if(formAction=="update"&&instance.instanceId!=instanceId){
+				 validateConfiguration(instance);
+				 if(configFlag==true){
+					 console.log(" config Flag.." + configFlag);
+						return false;
+					}
+				}
+				if(formAction!="update"){
+				 validateConfiguration(instance);
+				  if(configFlag==true){
+					 console.log(" config Flag.." + configFlag);
+						return false;
+					}
+				}
+			});
+		}
+		if($('#versions').val()==0){
+			alert("Please select version");
+		}else if($('#notifications').val()==0){
+			alert("Please select table");
+		}else if($('#rooms').val()==0 || $('#rooms').val()==null){
+			alert("Please select Space");
+		}else if(listResultData.length != 0 && configFlag==true){
+			if(formAction=="update"){
+				if(room_modified)
+					$('#same-configuration').foundation('open');
+				else
+					saveServiceNowInstanceConfig();
+			}else{
+				$('#same-configuration').foundation('open');
+			}
+		}else {
+			saveServiceNowInstanceConfig();
+		}
+	}
+	function saveServiceNowInstanceConfig(){
+		console.log("saveServiceNowInstanceConfig!!!!!!!!!");
+		$('#same-configuration').foundation('close');
+		$('.loading-second-block').html('Selected Space is '+ selectedRoomName);
+		$('#loading-block').foundation('open');
+		$.ajax({url: action_url+"?userId="+user_id,
+			async:true,
+			type: actionType,
+			data: saveJsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){	
+				$('#success-integration').foundation('open');
+				$('#loading-block').foundation('close');					
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					$('#loading-block').foundation('close');
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+		$('.loading-first-block').html('Please wait just a moment while your app is loading');
+		$('.loading-second-block').html('');
+	}
+</script>
+</head>
+<body>
+<div class="integration-app" id="servicenow"><br>
+		<div class="rows large-12 medium-12 columns warning-msg" style="display:none;"></div>
+		<div id="loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait just a moment while your app is loading</div>
+				<div class="loading-second-block">name and space name</div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="list-loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait...</div>
+				<div class="loading-second-block"></div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="success-integration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="success-loading">
+				<img class="spark-icon" src="" alt=".....">
+			</div>
+			<div class="well-done-text">Well done!</div>
+			<div class="success-integration-first-block">Your configuration has been set up. Ensure that you have followed any additional instructions provided.</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<div class="success-integration-second-block">
+					<!--<button class="button" id="room-button">Go to
+						Content Testing Space</button>-->
+					<button class="secondary button" id="done-button">Done</button>
+				</div>
+			</div>
+		</div>
+		<div class="reveal" id="remove-integration-popup" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="large-12 columns desktop-block">			    
+				<div class="row">
+					<div class="large-2 medium-2 columns"><img alt="" id="servicenow-icon" src=""/></div>
+					<div class="large-6 medium-6 columns" style="float:left;">
+						<label id="displayName-label"></label>
+						<label id="addedon-label"></label>
+					</div>
+				</div><br>
+				<div class="msg-labels"><label id="remove-msg"></label> <label id="remove-auth"></label></div>				
+				<button class="close-button" data-close aria-label="Close modal" type="button">
+					<span aria-hidden="true">&times;</span>
+				</button><br><br>
+				<button id="remove-integration-btn" class="button remove-integration-btn" style="float:right">Remove</button>
+			</div>
+			<div class="large-12 columns mobile-block">	
+				<div class="msg-labels"><label id="remove-msg-mobile"></label> <label id="remove-auth-mobile"></label></div>				
+				<div class="option-buttons remove-integration-buttons">
+					<label class="remove-popup-cancel"> 
+						<a href="#" id="cancel-remove-integration">cancel</a>
+					</label>
+					<label class="remove-popup-remove">
+						<a href="#" id="remove-integration-btn-mobile" class="remove-integration-btn">remove</a>
+					</label>
+				</div>
+			</div>
+		</div>
+		<div id="same-configuration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="same-config-text">An identical configuration to the same Cisco Spark space you have selected already exists. Are you sure you want to configure one more?</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<button class="secondary button same-config-yes">Yes</button>
+				<button class="secondary button same-config-no">No</button>
+			</div>
+		</div>
+		<div class="integrations" id="integrations-block">
+			<div id="instance-loading-block" class="row instance-loading-block" style="display: none;">
+				<div class="instances-loading">&nbsp;</div>
+				<div class="instances-loading-text"></div>
+			</div>
+			<div id="home" class="home">
+				<div class="row add-config-block">
+					<div class="large-12 medium-12 columns">							
+						<div class="large-6 medium-6 columns config-name"><label>ServiceNow configurations</label></div>
+						<div class="large-6 medium-6 columns">
+							<button class="remove-all-btn" data-open="remove-integration-popup" id="remove-all-config">Remove All</button>
+							<button class="secondary button" id="add-config">Add</button>
+						</div>					
+					</div>
+				</div>
+				<div id="instance-list-block" class="row instance-list-block"></div>
+			</div>
+		</div>
+		<div class="large-12 columns" id="integration-form">
+			<div class="large-12 medium-12 columns edit-roomconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured space does not exist.</span></p>
+			</div>
+			<form name="form" id="form" method="post">
+				<div class="large-12 medium-12 columns edit-config-info" style="display:none">
+					<p><span class="info-icon" title=""> &nbsp;</span><span>You can modify the Cisco Spark configuration, however if you need to change ServiceNow configuration, please return to previous page, remove this configuration and add a new one.</span></p>
+				</div>
+				<div class="row app-setup-block">
+					<div class="large-12 medium-12 columns"><label class="heading-01">ServiceNow setup instructions</label></div>					
+					<div class="large-12 medium-12 columns">
+					<p>	<span class="" id="expand-close" title=""> &nbsp;</span><span id="setup-label">You have to be a ServiceNow admin to add this integration. Please follow the below steps for initial one time set up.</span></p>
+					</div><br><br><br>
+					<div  id="showSetup">					
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label><b>Step 1</b></label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">
+								<p>Login into your ServiceNow administrator account. In the search bar, search for <b>Script Includes</b> and select it from the search results under <b>System Definition</b> as shown in the left side panel. Now, click the <b>New</b> button in center of the page as shown.</p><br>
+								<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow1.png" class="setup-image">
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label><b>Step 2</b></label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">
+								<p>In the right panel, enter <b>Name</b> as <b>SparkMessage</b> and choose <b>All application scopes</b> for the <b>Accessible from</b> dropdown. Copy the below code snippet and paste into the <b>Script</b> field. Click <b>Submit</b>.</p><br>
+								<p><label><b>Code Snippet to add :</b></label></p>
+								<div class="text-file"><textarea id="spark-message-script" rows="6" cols="100" readonly></textarea>
+								</div>
+								<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow2.png" class="setup-image">
+							</div>
+						</div>
+					</div>
+				</div>	
+				<div class="row app-config-block">
+					<div class="large-12 medium-12 columns"><label class="heading-01">ServiceNow configuration</label></div>
+					<div class="large-12 medium-10 columns">
+						<div class="large-8  columns items-config sub-config-block">
+								<div class="large-2 medium-2 columns small-mobile">
+									<label class="label-config">Version:</label>
+								</div>
+								<div class="large-5 medium-5 columns text left input-small-mobile versions-add-block">
+									<select name="versions" id="versions" class="dropdown">
+										<option value='0'>Please Select</option>
+										<option value='geneva'>Geneva</option>
+										<option value='fuji'>Fuji</option>
+										<option value='helsinki'>Helsinki</option>
+									</select>
+									<span class="has-tip tip-right" id="tooltip" title="Your ServiceNow bulid version"
+								data-tooltip><img class="tool-tip"></span>
+								</div>
+								<div class="large-5 medium-5 columns text left input-small-mobile versions-edit-block" style="display:none;">
+									<div id="versions-selected-text" class="edit-notifications-block"></div>
+								</div>
+						</div>
+						<div class="large-8 items-config columns sub-config-block">
+							<div class="large-2 medium-2 columns small-mobile">
+								<label class="label-config">Tables:</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile tables-add-block">
+								<select name="notifications" id="notifications" class="dropdown">
+										<option value='0'>Please Select</option>
+										<option value='changerequest'>Change Request</option>
+										<option value='incidents'>Incidents</option>
+										<option value='problems'>Problems</option>
+								</select>
+								<span class="has-tip tip-right" id="tooltip" title="Tables, for which you’d receive notifications. You can modify code provided below to receive updates from other Tables, not listed here, if needed." data-tooltip><img class="tool-tip"></span>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile tables-edit-block" style="display:none;">
+								<div id="tables-selected-text" class="edit-notifications-block"></div>
+							</div>
+						</div>							
+					</div>	
+					<div class="large-12 medium-12 columns config-info" style="display:none;">
+						<p><span class="" id="expand-close-config" title=""> &nbsp;</span><span id="config-label">Please follow the below steps to add this configuration. You can add/edit/delete multiple configurations at anytime.</span></p>
+					</div>
+					<div  id="showConfig" style="display:none;">					
+						<div class="changerequest" style="display:none;">
+							<div class="changegeneva" style="display:none;">
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step B</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Change Request</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestcommon1.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step C</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the <b>When to run</b> tab, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+										<p>No changes required in the <b>Actions</b> tab.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestcommon2.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b></b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>Now, select the <b>Advanced</b> tab and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+										<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+										<div class="text-file"><textarea id="changerequestcommon" rows="6" cols="100" readonly></textarea></div>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestcommon3.png" class="setup-image">
+									</div>																
+								</div>
+							</div>
+							<div class="changefuji" style="display:none;">
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step B</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Change Request</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestfuji1.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step C</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the <b>When to run</b> section, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+										<p>No changes required in the <b>Actions</b> section.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestfuji2.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b></b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>Now, select the <b>Advanced</b> section and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+										<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+										<div class="text-file"><textarea id="changerequestfuji" rows="6" cols="100" readonly></textarea></div>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequest2.png" class="setup-image">
+									</div>																
+								</div>
+							</div>
+							<div class="changehelsinki" style="display:none;">
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step B</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Change Request</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestcommon1.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step C</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the <b>When to run</b> tab, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+										<p>No changes required in the <b>Actions</b> tab.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestcommon2.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b></b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>Now, select the <b>Advanced</b> tab and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+										<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+										<div class="text-file"><textarea id="changerequestcommon" rows="6" cols="100" readonly></textarea></div>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/changerequestcommon3.png" class="setup-image">
+									</div>																
+								</div>
+							</div>
+						</div>
+						<div class="incidents" style="display:none;">
+							<div class="incidentsgeneva" style="display:none;">
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step B</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Incident</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentscommon1.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step C</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the <b>When to run</b> tab, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+										<p>No changes required in the <b>Actions</b> tab.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentscommon2.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b></b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>Now, select the <b>Advanced</b> tab and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+										<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+										<div class="text-file"><textarea id="incidentscommon" rows="6" cols="100" readonly></textarea></div>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentscommon3.png" class="setup-image">
+									</div>																
+								</div>
+							</div>
+							<div class="incidentsfuji" style="display:none;">
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step B</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Incident</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentfuji1.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step C</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the <b>When to run</b> section, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+										<p>No changes required in the <b>Actions</b> section.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentfuji2.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b></b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>Now, select the <b>Advanced</b> section and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+										<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+										<div class="text-file"><textarea id="incidentsfuji" rows="6" cols="100" readonly></textarea></div>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incident2.png" class="setup-image">
+									</div>																
+								</div>
+							</div>
+							<div class="incidentshelsinki" style="display:none;">
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+									<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step B</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Incident</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentscommon1.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step C</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the <b>When to run</b> tab, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+										<p>No changes required in the <b>Actions</b> tab.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentscommon2.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns">
+										<label><b></b></label>
+									</div>
+									<div class="large-11 medium-11 columns">
+										<p>Now, select the <b>Advanced</b> tab and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+										<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+										<div class="text-file"><textarea id="incidentscommon" rows="6" cols="100" readonly></textarea></div>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/incidentscommon3.png" class="setup-image">
+									</div>																
+								</div>
+							</div>
+						</div>
+						<div class="problems" style="display:none;">
+							<div class="problemsgeneva" style="display:none;">
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step B</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Problem</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemscommon1.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b>Step C</b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>In the <b>When to run</b> tab, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+										<p>No changes required in the <b>Actions</b> tab.</p>
+										<br>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemscommon2.png" class="setup-image">
+									</div>
+								</div>
+								<div class="large-12 columns sub-config-block">
+									<div class="large-1 medium-1 columns step">
+										<label><b></b></label>
+									</div>
+									<div class="large-11 medium-11 columns step-text">
+										<p>Now, select the <b>Advanced</b> tab and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+										<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+										<div class="text-file"><textarea id="problemscommon" rows="6" cols="100" readonly></textarea></div>
+										<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemscommon3.png" class="setup-image">
+									</div>																
+								</div>
+							</div>
+						</div>
+						<div class="problemsfuji" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+								<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+								<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Problem</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+									<br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemfuji1.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>When to run</b> section, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+									<p>No changes required in the <b>Actions</b> section.</p>
+									<br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemfuji2.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b></b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, select the <b>Advanced</b> section and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+									<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+									<div class="text-file"><textarea id="problemsfuji" rows="6" cols="100" readonly></textarea></div>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problem2.png" class="setup-image">
+								</div>																
+							</div>
+						</div>
+						<div class="problemshelsinki" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+								<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the search bar, search for <b>Business Rules</b> and select it from the search results. Then, click the <b>New</b> button as shown.</p><br>
+								<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/servicenow3.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the right panel, enter <b>Name</b> of your choice, choose <b>Problem</b> from the <b>Table</b> dropdown and select <b>Active</b> and <b>Advanced</b> checkboxes.</p>
+									<br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemscommon1.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>When to run</b> tab, choose <b>after</b> option from the <b>When</b> dropdown. Select <b>Insert</b>, <b>Update</b> and <b>Delete</b> checkboxes.</p>
+									<p>No changes required in the <b>Actions</b> tab.</p>
+									<br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemscommon2.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b></b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, select the <b>Advanced</b> tab and paste the below code snippet into the <b>Script</b> field. Click <b>Submit</b>.</p>
+									<p>Note: If you need notifications for other Tables not listed in the ServiceNow Configuration section above, you can modify the code appropriately using the same Webhook URL and paste that code into the <b>Script</b> field.</p>
+									<div class="text-file"><textarea id="problemscommon" rows="6" cols="100" readonly></textarea></div>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/servicenow/problemscommon3.png" class="setup-image">
+								</div>																
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row spark-config-block">
+					<div class="large-10 medium-10 columns">
+						<h3 class="heading-01">Cisco Spark configuration</h3>
+						<div class="large-8 columns sub-config-block">
+							<div class="large-2 medium-3 columns small-mobile">
+								<label>Space</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<select name="room" id="rooms" class="custom-select">
+								<option value='0'>Please Select</option></select><span class="has-tip tip-right" id="tooltip" title="Space in which you'd like to receive notifications. Ensure newly created spaces have at least one message in it for it to show up here."
+									data-tooltip><img class="tool-tip"></span>
+							</div>
+							<div class="rooms-loading" style="display: none;"></div>
+						</div>
+						<div class="large-8 columns sub-config-block left">
+							<div class="large-2 medium-3 columns small-mobile config-optional">
+								<label>Configuration name (optional)</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<input type="text" name="displayName" id="displayName" class="integration-name"	value="">
+							</div>							
+						</div>
+					</div>
+				</div>
+				<div class="row integration-config-block">
+					<div class="large-5 medium-5 columns"> &nbsp;</div>
+					<div class="large-4 medium-4 columns left">
+						<button id="cancel-button" class="button">Cancel</button>
+						<button id="submit-button" class="button secondary text">Add Integration</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Salesforce Integration to Spark</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.css" rel="stylesheet" type="text/css"> 
+<link href="https://d24wgzqqegxpap.cloudfront.net/api/css/collab-ui-min.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/styles.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/select2.min.css" rel="stylesheet" />  
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.js"></script> 
+<script type="text/javascript" src="https://d24wgzqqegxpap.cloudfront.net/api/js/porthole.min.js"></script>
+<script type="text/javascript" src="https://183.82.99.100:8443/CiscoWebcontent/js/scriptsRoom.js"></script>
+<script src="https://183.82.99.100:8443/CiscoWebcontent/js/select2.min.js"></script> 
+<style>
+@media screen and (max-width: 640px) {
+	.app-config-block .large-4.medium-4.columns.checkbox {
+		padding-top: 17px;
+	}
+}
+</style>
+<script type="text/javascript">
+	integration_app_icon_url="https://d24wgzqqegxpap.cloudfront.net/api/images/salesforce/salesforce.png";
+	var application_id='12';
+	var	instance_uuid="";
+	var webhookURL = "";
+	var sObject="";
+	var webhookurl="";
+	var selected_trigger_object="0";
+	var parameters ="";
+	var domainargs="";
+	var webhookdomainurl="";
+	var domainname="";
+	var notifications = [];
+	var triggerCodeImage = "";
+	var length;
+	var triggerName="";
+	var eventsArray = "";
+	var room_id = "";
+    var objetcsSelected = "";
+	var eventsMatchFlag = true;
+	var configFlag = false;
+	var saveJsonString = "";
+	var selectedRoomName = "";
+	var action_url = "";
+	var actionType = "";
+	oauthRequired=false;
+	appName = "Salesforce";
+	postMessageToSpark = "Salesforce "+postMessageToSpark;
+	updateMessageToSpark= "Salesforce "+updateMessageToSpark;
+	removeMessageToSpark= "Salesforce "+removeMessageToSpark;
+	$( document ).ready(function() {
+		application_auth_details_url="/api/applications/"+application_id;
+		token_url="/api/integrations/"+integration_id+"/authDetails";
+		save_spark_token_url="/api/clients/tokens";
+		save_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		get_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		configuration_settings_url="/api/integrations/"+integration_id+"/uiSettings";
+		save_configuration_settings_url="/api/integrations/instances";
+		update_configuration_settings_url="/api/integrations/instances/";
+		delete_instance_url="/api/integrations/instances/";
+		list_integration_instances_url="/api/integrations/instances";		
+		removeall_integration_instances_url="/api/integrations/instances";		
+		delete_spark_token_url="/api/clients/tokens";
+		delete_integration_token_url="/api/integrations/"+integration_id+"/appTokens";
+		action=action.toLowerCase();
+		if(action=="connect") {
+			$("#integrations-block").hide();
+			$("#integration-form").hide();
+			loadSalesforceForm();
+		} else if(action=="disconnect") {
+			formAction="disconnect";
+			removeAllIntegrationInstances(formAction);		
+		} else {
+			listIntegrations();
+		}
+		$("#rooms").select2();
+        $("#salesforce #rooms").on('change',function(){
+			room_modified=true;
+		});	
+		$("#salesforce #submit-button").click(function (e){
+			e.preventDefault();
+			saveSalesforceInstance();
+		});
+		$("#salesforce #cancel-button").click(function (e){
+			e.preventDefault();			
+			$('#integration-form').hide();
+			$('#integrations-block').show();
+			listIntegrations();
+			resize();
+		});
+		$('#salesforce #add-config').click(function(e){
+			notifications=[];
+			e.preventDefault();	
+			$(".config-info").hide();
+			formAction="add";
+			if(listResultData.length != 0){
+				$("#submit-button").text("Add");
+				expandSetup();
+				$("#setup-label").html('Steps you had executed to set up this integration. View for reference, if needed. Otherwise, steps need not be executed again.');
+			}
+			else{
+				$("#submit-button").text("Add Integration");
+				collapseSetup();
+				$("#setup-label").html('You have to be a Salesforce admin to add this integration. Please follow the below steps for initial one time set up.');
+			}
+			$("#expand-close-config").removeClass("expandarrow");
+			$("#expand-close-config").addClass("closearrow");
+			$('#expand-close-config').find("span").attr("title",'close');
+			$(".config-info").hide();
+			$("#showConfig").hide();
+			$('.edit-config-info').hide();
+			$("#config-label").html('Please follow the below steps to add this configuration. You can add/edit/delete multiple configurations at anytime.');
+			$(".objects-add-block").css("display", "block");
+			$('.objects-edit-block').css("display", "none");
+			$(".triggers-add-block").css("display", "block");
+			$('.triggers-edit-block').css("display", "none");
+			loadSalesforceForm();
+			loadRooms();
+		});
+		$("#salesforce-icon").attr("src", integration_app_icon_url);
+		$(".spark-icon").attr("src", spark_icon_url);
+		$("#expand-close").addClass("closearrow");
+		$('#expand-close').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				 expandSetup();
+			}else{
+				collapseSetup();
+			}
+			resize();
+		});
+		$("#expand-close-config").addClass("closearrow");
+		$('#expand-close-config').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				expandConfig();
+			}else{
+				collapseConfig();
+			}
+			resize();
+		});
+		$(".closearrow").mouseover(function(){
+			$('.closearrow').attr('title','close');
+		});		
+		$('.trigger').click(function() {
+			var events = "";
+			$("input:checkbox[name=trigger]:checked").each(function(){
+				if(events==""){
+					events = events + $(this).val();
+				}else{
+					events = events +','+ $(this).val();
+				}
+			});
+			notifications =[];
+			eventsArray = events.split(',');
+			if(eventsArray==""){
+				}else{
+				for(var i=0; i<eventsArray.length; i++){
+					notifications.push(eventsArray[i]);
+				}
+			}
+			var value= $(this).val();
+			if($('#triggerObjects').val()==0){				
+				notifications =[];
+				$(".trigger").prop("checked", false);
+				alert("Please select trigger object");
+				} else { 
+						if($(this).is(":checked")){
+							getTriggerSetup();
+						}else{
+							closeTriggerSetup();
+						}
+				   }
+			resize();
+		});
+		
+		$('#triggerObjects').on('change', function() {
+			$(".config-info").hide();
+			$("#showConfig").hide();
+			$(".account").hide();
+			$(".lead").hide();
+			$(".case").hide();
+			$(".contact").hide();
+			$(".opportunity").hide();
+			$(".campaign").hide();
+			if($('#triggerObjects').val()==0){
+				notifications =[];
+				$(".trigger").prop("checked", false);
+			}else{
+				sObjectval =  $("#triggerObjects option:selected").val();				
+				getTriggerSetup();
+				resize();
+			}
+		});
+		$("#salesforce #rooms").on('change',function(){
+			if($('#rooms').val()!=0&&formAction=="update")$(".edit-roomconfig-info").hide();
+		});
+		$(document).on("click", ".same-config-yes" , function(e) {
+			console.log("yes clicked!!!!!!!!!!!!!");
+			saveSalesforceInstanceConfig();
+		});
+		$(document).on("click", ".same-config-no" , function(e) {
+			console.log("no clicked!!!!!!!!!!!!!");
+			$('#same-configuration').foundation('close');
+		});		
+		$(document).on("click", "#salesforce #instance-list-block .edit-config" , function() {		
+			var notificationsArray = [];
+			var notificationsText = "";
+			formAction="update";
+			//expandSetup();
+			//expandConfig();
+			$("#setup-label").html('Steps you had executed to set up this integration. View for reference, if needed. Otherwise, steps need not be executed again.');
+			$("#config-label").html('Steps you had executed to add this configuration. View for reference, if needed. Otherwise, steps need not be executed again.');
+			$(".config-info").show();
+			$('.edit-config-info').show();
+			$("#submit-button").text("Save");
+			instanceId=this.id;
+			$.each(listResultData,function(index,value){
+				if(value["instanceId"]==instanceId) {
+					instanceData=value;
+				}
+			});
+			selected_room_id=instanceData.channelId;
+			room_id_old = instanceData.channelId;
+			loadSalesforceForm();
+			var config = JSON.parse(instanceData.configJson);
+			$("#rooms").val(instanceData.channelId);
+			$('#displayName').val(config.displayName);
+			sObjectval=config.object;
+			$(".account").hide();
+			$(".lead").hide();
+			$(".case").hide();
+			$(".contact").hide();
+			$(".opportunity").hide();
+			$(".campaign").hide();
+			webhookURL = config.webhookUrl;
+			webhookurl = "'"+ webhookURL +"';" + "\n";
+			domainargs = webhookURL.split('//');
+			domainname = domainargs[1].substr(0, domainargs[1].indexOf('/')); 
+			webhookdomainurl = domainargs[0]+"//"+domainname;
+			$("#webhookdomainurl").html(webhookdomainurl);
+			instance_uuid = instanceData.instanceUuid;
+			$('#instanceid').val(instanceId);
+			selected_trigger_object = config.object;
+			$('#triggerObjects').val(selected_trigger_object);
+			notifications = config.notifications;
+			if ($.isArray(notifications)) {
+				$.each(notifications, function(index, value) {
+					if(value=="triggerCreated"){
+						value = "Created";
+					}else if(value=="triggerUpdated"){
+						value = "Updated";
+					}else if(value=="triggerDeleted"){
+						value = "Deleted";
+					}
+					notificationsArray.push(value);
+					$("input[type=checkbox][value="+ value + "]").prop("checked", true);
+				});
+			} else {
+					if(notifications=="triggerCreated"){
+						notifications = "Created";
+					}else if(notifications=="triggerUpdated"){
+						notifications = "Updated";
+					}else if(notifications=="triggerDeleted"){
+						notifications = "Deleted";
+					}
+				notificationsArray.push(notifications);
+				$("input[type=checkbox][value="+ notifications+ "]").prop("checked", true);
+			}
+			notificationsText = notificationsArray.join(',');
+			getTriggerSetup();
+			$('.trigger').attr('disabled', true);
+			$('#triggerObjects').attr('disabled', true);
+			$(".objects-add-block").css("display", "none");
+			$('.objects-edit-block').css("display", "block");
+			$("#objects-selected-text").html(selected_trigger_object);
+			$(".triggers-add-block").css("display", "none");
+			$('.triggers-edit-block').css("display", "block");
+			$("#notifications-selected-text").html(notificationsText);
+			expandSetup();
+			expandConfig();
+		});		
+		$(document).on("click", "#done-button" , function() {
+			$('#success-integration').foundation('close');
+			$("#integration-form").hide();
+			listIntegrations();
+	    });	
+    });
+	function expandSetup(){
+		 $('#showSetup').hide();
+		 $("#expand-close").removeClass("closearrow");
+		 $("#expand-close").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');	
+	}
+	function collapseSetup(){
+		$("#expand-close").addClass("closearrow");
+		$("#expand-close").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#showSetup').show();		
+	}
+	function expandConfig(){
+		 $('#showConfig').hide();
+		 $("#expand-close-config").removeClass("closearrow");
+		 $("#expand-close-config").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');	
+		 console.log("in expand mode.." + $('#expand-close-config').attr('class'));
+	}
+	function collapseConfig(){
+		$("#expand-close-config").addClass("closearrow");
+		$("#expand-close-config").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#showConfig').show();
+	}
+	function getTriggerSetup(){
+			sObject=sObjectval;
+			if(sObject=="account")triggerName="Account";
+			if(sObject=="contact")triggerName="Contact";
+			if(sObject=="lead")triggerName="Lead";
+			if(sObject=="opportunity")triggerName="Opportunity";
+			if(sObject=="case")triggerName="Case";
+			if(sObject=="campaign")triggerName="Campaign";
+			length = notifications.length;
+			if(length==3){
+					parameters="";
+					triggerCodeImage = sObject+"CodeInsertUpdateDelete";								
+					parameters = "after insert, after update, after delete";
+					$("."+sObject).show();										
+					getTriggerCode(triggerName,parameters);
+					getTriggerTestCaseCode(triggerName);
+			}else if(length==2){
+				parameters="";
+				if(($.inArray('triggerCreated', notifications)>-1)&&($.inArray('triggerUpdated', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeInsertUpdate";								
+					parameters = "after insert,after update";										
+				}else if(($.inArray('triggerCreated', notifications)>-1)&&($.inArray('triggerDeleted', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeInsertDelete";								
+					parameters = "after insert,after delete";										
+				}else if(($.inArray('triggerUpdated', notifications)>-1)&&($.inArray('triggerDeleted', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeUpdateDelete";								
+					parameters = "after update,after delete";										
+				}			
+				$("."+sObject).show();	
+				getTriggerCode(triggerName,parameters);
+				getTriggerTestCaseCode(triggerName);
+			}else if(length!=0){				
+				parameters="";
+				if(($.inArray('triggerCreated', notifications)>-1) || notifications=="triggerCreated" || notifications=="Created"){
+					triggerCodeImage = sObject+"CodeInsert";			
+					parameters = "after insert";	
+				}else if(($.inArray('triggerUpdated', notifications)>-1) || notifications=="triggerUpdated" || notifications=="Updated"){
+					triggerCodeImage = sObject+"CodeUpdate";								
+					parameters = "after update";	
+				}else if(($.inArray('triggerDeleted', notifications)>-1) || notifications=="triggerDeleted" || notifications=="Deleted"){
+					triggerCodeImage = sObject+"CodeDelete";								
+					parameters = "after delete";	
+				}	
+				$("."+sObject).show();	
+				getTriggerCode(triggerName,parameters);
+				getTriggerTestCaseCode(triggerName);
+			}
+			if(length!=0&&sObject!=0){$(".config-info").show();collapseConfig();	
+			} else {$(".config-info").hide();$("#showConfig").hide();}
+			if(formAction=="update") {$("#showConfig").hide();}
+		}
+		function closeTriggerSetup(){
+			$("."+sObject).hide();
+			sObject=sObjectval;
+			length = notifications.length;
+			if(length==3){
+				parameters="";
+				triggerCodeImage = sObject+"CodeInsertUpdateDelete";								
+				parameters = "after insert, after update, after delete";		
+				$("."+sObject).show();
+				getTriggerCode(triggerName,parameters);
+				getTriggerTestCaseCode(triggerName);
+			}else if(length==2){
+				parameters="";
+				if(($.inArray('triggerCreated', notifications)>-1)&&($.inArray('triggerUpdated', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeInsertUpdate";								
+					parameters = "after insert,after update";										
+				}else if(($.inArray('triggerCreated', notifications)>-1)&&($.inArray('triggerDeleted', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeInsertDelete";								
+					parameters = "after insert,after delete";										
+				}else if(($.inArray('triggerUpdated', notifications)>-1)&&($.inArray('triggerDeleted', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeUpdateDelete";								
+					parameters = "after update,after delete";										
+				}	
+				$("."+sObject).show();	
+				getTriggerCode(triggerName,parameters);
+				getTriggerTestCaseCode(triggerName);
+			}else if(length!=0){
+				parameters="";
+				if(($.inArray('triggerCreated', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeInsert";								
+					parameters = "after insert";										
+				}else if(($.inArray('triggerUpdated', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeUpdate";								
+					parameters = "after update";										
+				}else if(($.inArray('triggerDeleted', notifications)>-1)){
+					triggerCodeImage = sObject+"CodeDelete";								
+					parameters = "after delete";										
+				}								
+				$("."+sObject).show();	
+				getTriggerCode(triggerName,parameters);
+				getTriggerTestCaseCode(triggerName);
+			}else if(length==0){
+				$("."+sObject).hide();
+			}
+			if(length!=0){$(".config-info").show();	
+			} else {$(".config-info").hide();$("#showConfig").hide();}		
+		}
+	function getTriggerCode(triggerName,parameters){
+		var triggercode = 'trigger Spark'+triggerName+'Trigger on '+triggerName+' ('+parameters+') {' + "\n"  ;
+		 triggercode  = triggercode +'String url = ';
+		 triggercode  = triggercode + webhookurl; 
+		 triggercode  = triggercode + 'String baseURL = System.URL.getSalesforceBaseUrl().toExternalForm();' +"\n"; 
+		 triggercode =	triggercode + 'String content = SparkWebhook.jsonContent(Trigger.new, Trigger.old,baseURL);' + "\n" +
+						'SparkWebhook.callout(url, content);' + "\n" +
+					'}';
+	   $("textarea#"+triggerName).html("");
+	   $("textarea#"+triggerName).html(triggercode);
+	}
+	function getTriggerTestCaseCode(triggerName){
+		$.ajax({
+			url: "https://d24wgzqqegxpap.cloudfront.net/api/files/salesforce/triggerTestCaseSnippet.txt",
+				async: true,
+				success: function(result){					
+					result = result.replace(/triggerName/g, triggerName);	
+					var testCaseWebhook = webhookurl.replace(/\;/g,"");					
+					result = result.replace("webhookURL", testCaseWebhook);
+					 $("textarea#"+triggerName+'TestCase').html("");
+					 $("textarea#"+triggerName+'TestCase').html(result);
+				},
+				 error: function(xmlHttpRequest, error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+	}
+	function getApexClassCode(){
+		var apexclasscode = "public class SparkWebhook {" +"\n"+
+		"public static String jsonContent(List<Object> triggerNew, List<Object> triggerOld, String url) {" +"\n"+
+		"String newObjects = '[]';" +"\n"+
+		"if (triggerNew != null) {" +"\n"+
+		"newObjects = JSON.serialize(triggerNew);" +"\n"+
+		"}" +"\n"+
+		"String oldObjects = '[]';" +"\n"+
+		"if (triggerOld != null) {" +"\n"+
+		"oldObjects = JSON.serialize(triggerOld);" +"\n"+
+		"}" +"\n"+
+		"String userId = JSON.serialize(UserInfo.getUserId());" +"\n"+
+		"String baseURL = JSON.serialize(url);" +"\n"+
+		"String userName = JSON.serialize(UserInfo.getName());" +"\n"+
+		"String content = '{\"new\": ' + newObjects + ', \"old\": ' + oldObjects + ', \"baseURL\":' + baseURL + ', \"userName\":'+userName+'}';" +"\n"+
+		"return content;" +"\n"+
+		"}" +"\n"+
+		"@future(callout=true)" +"\n"+
+		"public static void callout(String url, String content) {" +"\n"+
+		"Http h = new Http();" +"\n"+
+		"HttpRequest req = new HttpRequest();" +"\n"+
+		"req.setEndpoint(url);" +"\n"+
+		"req.setMethod('POST');" +"\n"+
+		"req.setHeader('Content-Type', 'application/json');" +"\n"+
+		"req.setBody(content);" +"\n"+
+		"h.send(req);" +"\n"+
+		"}" +"\n"+
+		"}" ;
+		$("textarea#spark-webhook").html(apexclasscode);
+	}
+	function loadSalesforceForm(){
+		$('.trigger').attr('disabled', false);
+		$('#triggerObjects').attr('disabled', false);
+		$("#form").trigger("reset");
+		$('#integrations-block').hide();
+		$("#integration-form").show();
+		$(".edit-roomconfig-info").hide();
+		$(".rooms-loading").show();
+		resize();
+		if(ui_settings=="") {
+			console.log("uisettings empty...");
+			$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					ui_settings=result;	
+					loadConfigurationSettings();
+					loadRooms();
+				},
+				 error: function(xmlHttpRequest, error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+			getAllSparkRooms();
+		}else{
+			console.log("uisettings not empty...");
+			loadConfigurationSettings();
+			loadWebhookSettings();
+		}
+	}
+	function loadConfigurationSettings() {
+		if(ui_settings["sparkRoomSettings"]){
+			var roomFlag=false;
+			var rooms = "";
+			getApexClassCode();
+			var webhook_details = ui_settings["integrationSpecificSettings"]["settings"]["wehookDetails"];
+			$('#rooms')[0].options.length = 1;
+			rooms = ui_settings["sparkRoomSettings"].items;
+			if(allRooms.length !=0) {
+				rooms = allRooms;
+				$(".rooms-loading").hide();
+			}
+			//if(!isMobile)$("#rooms").customselect("destroy");		
+			$.each(rooms, function(id,obj){
+				$("#rooms").append($('<option>').text(obj.title).attr('value',obj.id));
+				if(formAction=="update" && selected_room_id==obj.id&&roomFlag==false){
+					selected_room_id=obj.id;
+					roomFlag=true;
+				}
+			});
+			if(formAction=="update" && roomFlag==false){
+				selected_room_id = "0";
+				$(".edit-roomconfig-info").show();
+			}
+			if(formAction!="update") {
+				webhookURL =webhook_details["webhookUrl"];
+				webhookurl = "'"+ webhookURL +"';" + "\n";
+				instance_uuid = webhook_details["instanceUuid"];
+				domainargs = webhookURL.split('//');
+				domainname = domainargs[1].substr(0, domainargs[1].indexOf('/')); 
+				webhookdomainurl = domainargs[0]+"//"+domainname;
+				$("#webhookdomainurl").html(webhookdomainurl);
+			}
+			$("#rooms").val(selected_room_id);	
+			$('#select2-rooms-container').html($("#rooms option:selected").text());				
+			selected_room_id="0";
+			//if(!isMobile)$("#rooms").customselect();
+		}else{
+			alert("We've experienced some difficulty. Try again.");
+		}
+	}
+	function objLength(obj){
+		var i=0;
+		for (var x in obj){
+			if(obj.hasOwnProperty(x)){
+				i++;
+			}
+		} 
+		return i;
+	}
+	function loadWebhookSettings(){
+		$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					if(formAction!="update") {
+						var webhook_details = result["integrationSpecificSettings"]["settings"]["wehookDetails"];
+						webhookURL =webhook_details["webhookUrl"];
+						webhookurl = "'"+ webhookURL +"';" + "\n";
+						instance_uuid = webhook_details["instanceUuid"];
+						domainargs = webhookURL.split('//');
+						domainname = domainargs[1].substr(0, domainargs[1].indexOf('/')); 
+						webhookdomainurl = domainargs[0]+"//"+domainname;
+						$("#webhookdomainurl").html(webhookdomainurl);
+					}
+				},
+				 error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   }else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+	}
+	function validateConfiguration(instance, notifications){
+	    console.log("validating Configuration....");
+		var configData = JSON.parse(instance.configJson);
+		var configEvents = configData.notifications;
+		var notificationsLength = notifications.length;
+		var matchCount = 0;
+		configFlag = false;
+		eventsMatchFlag = true;
+		if(instance.channelId==room_id&&configData.object==objetcsSelected){
+			console.log("matched...room and board");
+			configFlag = true;
+		}
+		if($.isArray(notifications)){
+			console.log("configEvents..." + configEvents +"length...." + configEvents.length);
+			if($.isArray(configEvents)){
+				for (var p in notifications) {
+					if(configEvents[p] != notifications[p]){
+						eventsMatchFlag = false;
+						console.log("Match: " + configEvents[p] + "!=" + notifications[p]);
+					}else {
+						matchCount = matchCount +1;
+					   console.log("Match: " + configEvents[p] + "==" + notifications[p]);
+					}
+					console.log("match count..." + matchCount + "configEvents.length..." + configEvents.length);
+					if(matchCount==configEvents.length&&notificationsLength==configEvents.length){
+						eventsMatchFlag = true;
+						return false;
+					}else{
+						eventsMatchFlag = false;
+					}
+				}
+			}else{
+			    console.log("not matched...configEvents");
+				eventsMatchFlag = false;
+			}
+		}else{
+			if($.isArray(configEvents)){
+			    eventsMatchFlag = false;
+				console.log("not matched...array" + eventsMatchFlag);
+			}else{
+			  if(configEvents==notifications){
+				eventsMatchFlag = true;
+				 console.log("matched single.." + eventsMatchFlag);
+			  }else{
+				eventsMatchFlag = false;
+			  }
+			}
+		}
+	}
+    function saveSalesforceInstance() {
+		var res = $('form').serializeObject();
+		selectedRoomName=$("#rooms option:selected").text();
+		objetcsSelected = $("#triggerObjects").val();
+		var jsonData = {};		
+		room_id = $("#rooms option:selected").val();	
+		jsonData["channelId"] = room_id;								
+		jsonData["integrationId"] = integration_id;
+		jsonData["status"] = "ACTIVE";
+		jsonData["userId"] = user_id;	
+		postAddMessageToRoom(room_id,appName);
+		var triggerlength = $('input[name="trigger"]:checked').length;
+		if(formAction=="update") {
+			triggerlength="update";
+			jsonData["configJson"]={};
+			jsonData["instance_id"] = instanceId;
+			if(room_id!=room_id_old) {
+				room_modified=true;
+				jsonData["messageToSpark"] = updateMessageToSpark;
+			} else {
+				room_modified=false;
+			}
+			var config = JSON.parse(instanceData.configJson);
+			jsonData["room_modified"] = room_modified;
+			jsonData["configJson"]["notifications"]=config.notifications;
+			jsonData["configJson"] = JSON.parse(instanceData.configJson);	
+			action_url=update_configuration_settings_url+instanceId;
+			actionType="PUT";
+			$('.loading-first-block').html('Please wait while your Integration is being updated');
+		} else {
+			jsonData["configJson"]={};
+			jsonData["configJson"]["notifications"]=res.trigger;
+			jsonData["messageToSpark"] = postMessageToSpark;
+			action_url=save_configuration_settings_url;
+			actionType="POST";
+			$('.loading-first-block').html('Please wait while your Integration is being set up');
+		}
+		jsonData["configJson"]["displayName"]= res.displayName;
+		jsonData["configJson"]["object"]=$("#triggerObjects").val();
+		jsonData["instanceUuid"] = instance_uuid;
+		jsonData["configJson"]["webhookUrl"]=webhookURL;		
+		jsonData["messageFormat"]="Salesforce :Bot"+"Hello...";
+		saveJsonString = JSON.stringify(jsonData);
+		var notifications = res.trigger;
+		if(listResultData.length != 0 && triggerlength !=0){
+			$.each(listResultData, function(i, instance) {
+				if(formAction=="update"&&instance.instanceId!=instanceId){
+					var configData = JSON.parse(instance.configJson);
+					notifications = configData.notifications;
+				 validateConfiguration(instance, notifications);
+				 if(eventsMatchFlag==true&&configFlag==true){
+					 console.log("eventsMatchFlag in cond.." + eventsMatchFlag + " config Flag.." + configFlag);
+						return false;
+					}
+				}
+				if(formAction!="update"){
+				 validateConfiguration(instance, notifications);
+				  if(eventsMatchFlag==true&&configFlag==true){
+					 console.log("eventsMatchFlag in cond.." + eventsMatchFlag + " config Flag.." + configFlag);
+						return false;
+					}
+				}
+			});
+		}
+		if($('#triggerObjects').val()==0){
+			alert("Please select trigger object");
+		}else if(triggerlength==0){
+			alert("Please select at least one Notification");
+		} else if($('#rooms').val()==0 || $('#rooms').val()==null){
+			alert("Please select Space");
+		}else if(listResultData.length != 0 && eventsMatchFlag==true && configFlag==true){
+			if(formAction=="update"){
+				if(room_modified)
+					$('#same-configuration').foundation('open');
+				else
+					saveSalesforceInstanceConfig();
+			}else{
+				$('#same-configuration').foundation('open');
+			}
+		}else {
+			saveSalesforceInstanceConfig();
+		}
+	}
+	function saveSalesforceInstanceConfig(){
+		console.log("saveSalesforceInstanceConfig!!!!!!!!!");
+		$('#same-configuration').foundation('close');
+		$('.loading-second-block').html('Selected Space is '+ selectedRoomName);
+		$('#loading-block').foundation('open');
+		$.ajax({url: action_url+"?userId="+user_id,
+			async:true,
+			type: actionType,
+			data: saveJsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){	
+				$('#success-integration').foundation('open');
+				$('#loading-block').foundation('close');					
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					$('#loading-block').foundation('close');
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+		$('.loading-first-block').html('Please wait just a moment while your app is loading');
+		$('.loading-second-block').html('');
+	}
+</script>
+</head>
+<body>
+	<div class="integration-app" id="salesforce">
+		<div class="rows large-12 medium-12 columns warning-msg" style="display:none;"></div>
+		<div id="loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait just a moment while your app is loading</div>
+				<div class="loading-second-block">name and space name</div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="list-loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait...</div>
+				<div class="loading-second-block"></div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="success-integration" class="reveal success-integration" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="success-loading">
+				<img class="spark-icon" src="" alt=".....">
+			</div>
+			<div class="well-done-text">Well done!</div>
+			<div class="success-integration-first-block">Your configuration has been set up. Ensure that you have followed any additional instructions provided.</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<div class="success-integration-second-block">
+					<!--<button class="button" id="room-button">Go to
+						Content Testing Space</button>-->
+					<button class="secondary button" id="done-button">Done</button>
+				</div>
+			</div>
+		</div>
+		
+		<div class="reveal" id="remove-integration-popup" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="large-12 columns desktop-block">			    
+				<div class="row">
+					<div class="large-2 medium-2 columns"><img alt="" id="salesforce-icon" src=""/></div>
+					<div class="large-6 medium-6 columns" style="float:left;">
+						<label id="displayName-label"></label>
+						<label id="addedon-label"></label>
+					</div>
+				</div><br>
+				<div class="msg-labels"><label id="remove-msg"></label> <label id="remove-auth"></label></div>				
+				<button class="close-button" data-close aria-label="Close modal" type="button">
+					<span aria-hidden="true">&times;</span>
+				</button><br><br>
+				<button id="remove-integration-btn" class="button remove-integration-btn" style="float:right">Remove</button>
+			</div>
+			<div class="large-12 columns mobile-block">	
+				<div class="msg-labels"><label id="remove-msg-mobile"></label> <label id="remove-auth-mobile"></label></div>				
+				<div class="option-buttons remove-integration-buttons">
+					<label class="remove-popup-cancel"> 
+						<a href="#" id="cancel-remove-integration">cancel</a>
+					</label>
+					<label class="remove-popup-remove">
+						<a href="#" id="remove-integration-btn-mobile" class="remove-integration-btn">remove</a>
+					</label>
+				</div>
+			</div>
+		</div>
+		<div id="same-configuration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="same-config-text">An identical configuration to the same Cisco Spark space you have selected already exists. Are you sure you want to configure one more?</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<button class="secondary button same-config-yes">Yes</button>
+				<button class="secondary button same-config-no">No</button>
+			</div>
+		</div>
+		<div class="integrations" id="integrations-block">
+			<div id="instance-loading-block" class="row instance-loading-block" style="display: none;">
+				<div class="instances-loading">&nbsp;</div>
+				<div class="instances-loading-text"></div>
+			</div>
+			<div id="home" class="home">
+				<div class="row add-config-block">
+					<div class="large-12 medium-12 columns">							
+						<div class="large-6 medium-6 columns config-name"><label>Salesforce configurations</label></div>
+						<div class="large-6 medium-6 columns">
+							<button class="button" data-open="remove-integration-popup" id="remove-all-config">Remove All</button>
+							<button class="secondary button" id="add-config">Add</button>
+						</div>					
+					</div>
+				</div>
+				<div id="instance-list-block" class="row instance-list-block">						
+				</div>
+			</div>
+		</div>
+		<div class="large-12 columns" id="integration-form">
+			<div class="large-12 medium-12 columns edit-roomconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured space does not exist.</span></p>
+			</div>
+			<div class="authenticted-block">Authenticated to Salesforce as: <span id="authenticted-to"></span></div>
+			<form name="form" id="form" method="post">	
+				<div class="large-12 medium-12 columns edit-config-info" style="display:none">
+					<p><span class="info-icon" title=""> &nbsp;</span><span>You can modify the Cisco Spark configuration, however if you need to change Salesforce configuration, please return to previous page, remove this configuration and add a new one.</span></p>
+				</div>
+				<div class="row app-setup-block">
+				    <div class="large-12 medium-12 columns"><label class="heading-01">Salesforce setup instructions</label></div>					
+					<div class="large-12 medium-12 columns">						
+						<p><span class="" id="expand-close" title=""> &nbsp;</span><span id="setup-label">You have to be a Salesforce admin to add this integration. Please follow the below steps for initial one time set up.</span></p>																	
+					</div>
+					<div id="showSetup">						
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label><b>Step 1</b></label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">
+								<p> <a href="https://login.salesforce.com" target="_blank">Login</a> to your Salesforce account or your sandbox environment, based on your Salesforce Edition. Click <b>Setup</b> icon in the top right corner, click on <b>Setup Home</b> as shown.</p><br>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce1.png" class="setup-image">
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label><b>Step 2</b></label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">
+								<p>Go to the <b>SETTINGS</b> section in the left side panel. Then, expand on the <b>Security</b> option and select <b>Remote Site Settings</b>. After that, click on the <b>New Remote Site</b> button in the center of the page as shown.</p><br>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce2.png" class="setup-image">
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label><b>Step 3</b></label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">
+								<p>Enter the <b>Remote Site Name</b> of your choice. Copy the provided Webhook domain and paste into the <b>Remote Site URL</b> text box. Then, click <b>Save</b>.</p>
+								<p>Webhook Domain is <b id="webhookdomainurl"></b></p><br>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce3.png" class="setup-image">
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label><b>Step 4</b></label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">
+								<p>In the left side panel, under the <b>PLATFORM TOOLS</b> section, expand on the <b>Custom Code</b> option and select <b>Apex Classes</b>. Now, click on the <b>New</b> button in the center of the page as shown.</p><br>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce4.png" class="setup-image">
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label><b>Step 5</b></label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">
+								<p>Copy this code snippet and paste into the <b>Apex classes</b> as shown. Then, click <b>Save</b>.</p><br>
+								<div class="large-12 columns">
+									<div  class="large-11 medium-11 columns"><label><b>Code Snippet to add :</b></label></div>
+								</div>
+								<div class="text-file"><textarea id="spark-webhook" rows="6" cols="100" readonly></textarea></div>
+								<br>							
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce5.png" class="setup-image">
+							</div>							
+						</div>						
+					</div>
+				</div>
+				<div class="row app-config-block">
+					<div class="large-12 medium-12 columns"><label class="heading-01">Salesforce configuration</label></div>
+						<div class="large-11 medium-11 columns">
+							<div class="large-8  columns items-config sub-config-block">
+								<div class="large-2 medium-2 columns small-mobile">
+									<label class="label-config">Objects:</label>
+								</div>
+								<div class="large-5 medium-5 columns text left input-small-mobile objects-add-block">
+									<select id="triggerObjects" name="triggerObjects" class="dropdown">
+										<option value='0'>Please Select</option>
+										<option value='account'>Account</option>
+										<option value='contact'>Contact</option>
+										<option value='lead'>Lead</option>
+										<option value='opportunity'>Opportunity</option>
+										<option value='case'>Case</option>
+										<option value='campaign'>Campaign</option>
+									</select>
+									<span class="has-tip tip-right" id="tooltip" title="Trigger objects, for which you'd receive notifications"
+										data-tooltip><img class="tool-tip salesforce"></span>
+								</div>
+								<div class="large-5 medium-5 columns text left input-small-mobile objects-edit-block" style="display:none;">
+									<div id="objects-selected-text" class="edit-notifications-block"></div>
+								</div>
+							</div>	
+							<div class="large-12 columns items-config sub-config-block">
+								<div class="large-2 medium-2 columns small-mobile"><label class="label-config">Notifications:</label></div>
+								<div  class="large-10 medium-10 columns notifications-block triggers-add-block" id="trigeers-block">
+									<div class="large-4 medium-4 columns checkbox">
+										<input type="checkbox" class="trigger" name="trigger" id="trigger-created" value="triggerCreated"><label for="trigger-created">Created</label>
+									</div>									
+									<div class="large-4 medium-4 columns checkbox">
+										<input type="checkbox" class="trigger" name="trigger" id="trigger-updated" value="triggerUpdated"><label for="trigger-updated">Updated</label>
+									</div>								
+									<div class="large-4 medium-4 columns checkbox">
+										<input type="checkbox" class="trigger" name="trigger" id="trigger-deleted" value="triggerDeleted"><label for="trigger-deleted">Deleted</label>
+									</div>						
+								</div>
+								<div  class="large-10 medium-10 columns text left input-small-mobile triggers-edit-block"  style="display:none;">
+									<div id="notifications-selected-text" class="edit-notifications-block"></div>
+								</div>
+								<div class="large-12 columns"></div>
+							</div>
+						</div>	
+					<div class="large-12 medium-12 columns config-info" style="display:none;">
+						<p><span class="" id="expand-close-config" title=""> &nbsp;</span><span id="config-label">Please follow the below steps to add this configuration. You can add/edit/delete multiple configurations at anytime.</span></p>
+					</div>
+					<div id="showConfig" style="display:none;">						
+						<div class="account" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>PLATFORM TOOLS</b>, expand on the <b>Custom Code</b> option in the left side panel and select <b>Apex Triggers</b>. Now, click on the <b>Developer Console</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/appextriggers.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>	Click on the cross mark as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce6.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Go to the <b>File</b> menu in the top left corner. Select <b>New</b> and then <b>Apex Trigger</b> as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce7.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step D</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the popup window, enter the <b>Name</b> as <b>SparkAccountTrigger</b> and select the <b>sObject</b> value as <b>Account</b>. Click <b>Submit</b>.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/account.png" class="setup-image">
+								</div>
+							</div>												
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step E</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Go to the <b>File</b> menu in the top left corner and click <b>Save</b>.</p>
+									<p>Note: The code snippet is generated based on the Salesforce configuration selection made above.</p>
+									<div class="text-file"><textarea id="Account" rows="5" cols="100" readonly>	</textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/account-code.png" class="setup-image">
+								</div>																							
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step F</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the left side panel, under the <b>PLATFORM TOOLS</b> section, expand on the <b>Custom Code</b> option and select <b>Apex Classes</b>. Now, click on the <b>New</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce4.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step G</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Click <b>Save</b> button. Once saved, if configured in sandbox environment, promote all to your Production environment.</p>
+									<p>Note: The code snippet is generated based on the Salesforce object selection made above.</p>
+									<div class="text-file"><textarea id="AccountTestCase" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/accountApexClass.png" class="setup-image">
+								</div>						
+							</div>
+						</div>
+						<div class="contact" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>PLATFORM TOOLS</b>, expand on the <b>Custom Code</b> option in the left side panel and select <b>Apex Triggers</b>. Now, click on the <b>Developer Console</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/appextriggers.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>	Click on the cross mark as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce6.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Go to the <b>File</b> menu in the top left corner. Select <b>New</b> and then <b>Apex Trigger</b> as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce7.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step D</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the popup window, enter the <b>Name</b> as <b>SparkContactTrigger</b> and select the <b>sObject</b> value as <b>Contact</b>. Click <b>Submit</b>.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/contact.png" class="setup-image">
+								</div>
+							</div>													
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step E</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Go to the <b>File</b> menu in the top left corner and click <b>Save</b>.</p>
+									<p>Note: The code snippet is generated based on the Salesforce configuration selection made above.</p>
+									<div class="text-file"><textarea id="Contact" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/contact-code.png" class="setup-image">
+								</div>													
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step F</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the left side panel, under the <b>PLATFORM TOOLS</b> section, expand on the <b>Custom Code</b> option and select <b>Apex Classes</b>. Now, click on the <b>New</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce4.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step G</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Click <b>Save</b> button. Once saved, if configured in sandbox environment, promote all to your Production environment.</p>
+									<p>Note: The code snippet is generated based on the Salesforce object selection made above.</p>
+									<div class="text-file"><textarea id="ContactTestCase" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/accountApexClass.png" class="setup-image">
+								</div>						
+							</div>
+						</div>
+						<div class="case" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>PLATFORM TOOLS</b>, expand on the <b>Custom Code</b> option in the left side panel and select <b>Apex Triggers</b>. Now, click on the <b>Developer Console</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/appextriggers.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>	Click on the cross mark as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce6.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Go to the <b>File</b> menu in the top left corner. Select <b>New</b> and then <b>Apex Trigger</b> as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce7.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step D</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the popup window, enter the <b>Name</b> as <b>SparkCaseTrigger</b> and select the <b>sObject</b> value as <b>Case</b>. Click <b>Submit</b>.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/case.png" class="setup-image">
+								</div>
+							</div>													
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step E</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Go to the <b>File</b> menu in the top left corner and click <b>Save</b>.</p>
+									<p>Note: The code snippet is generated based on the Salesforce configuration selection made above.</p>
+									<div class="text-file"><textarea id="Case" rows="5" cols="100" readonly></textarea></div>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/salesforce/case-code.png" class="setup-image">
+								</div>																
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step F</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the left side panel, under the <b>PLATFORM TOOLS</b> section, expand on the <b>Custom Code</b> option and select <b>Apex Classes</b>. Now, click on the <b>New</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce4.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step G</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Click <b>Save</b> button. Once saved, if configured in sandbox environment, promote all to your Production environment.</p>
+									<p>Note: The code snippet is generated based on the Salesforce object selection made above.</p>
+									<div class="text-file"><textarea id="CaseTestCase" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/accountApexClass.png" class="setup-image">
+								</div>						
+							</div>
+						</div>
+						<div class="lead" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>PLATFORM TOOLS</b>, expand on the <b>Custom Code</b> option in the left side panel and select <b>Apex Triggers</b>. Now, click on the <b>Developer Console</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/appextriggers.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>	Click on the cross mark as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce6.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Go to the <b>File</b> menu in the top left corner. Select <b>New</b> and then <b>Apex Trigger</b> as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce7.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step D</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the popup window, enter the <b>Name</b> as <b>SparkLeadTrigger</b> and select the <b>sObject</b> value as <b>Lead</b>. Click <b>Submit</b>.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/lead.png" class="setup-image">
+								</div>
+							</div>													
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step E</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Go to the <b>File</b> menu in the top left corner and click <b>Save</b>.</p>
+									<p>Note: The code snippet is generated based on the Salesforce configuration selection made above.</p>
+									<div class="text-file"><textarea id="Lead" rows="5" cols="100" readonly></textarea></div>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/salesforce/lead-code.png" class="setup-image">
+								</div>																
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step F</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the left side panel, under the <b>PLATFORM TOOLS</b> section, expand on the <b>Custom Code</b> option and select <b>Apex Classes</b>. Now, click on the <b>New</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce4.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step G</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Click <b>Save</b> button. Once saved, if configured in sandbox environment, promote all to your Production environment.</p>
+									<p>Note: The code snippet is generated based on the Salesforce object selection made above.</p>
+									<div class="text-file"><textarea id="LeadTestCase" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/accountApexClass.png" class="setup-image">
+								</div>						
+							</div>
+						</div>
+						<div class="opportunity" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>PLATFORM TOOLS</b>, expand on the <b>Custom Code</b> option in the left side panel and select <b>Apex Triggers</b>. Now, click on the <b>Developer Console</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/appextriggers.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>	Click on the cross mark as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce6.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Go to the <b>File</b> menu in the top left corner. Select <b>New</b> and then <b>Apex Trigger</b> as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce7.png" class="setup-image">
+								</div>
+							</div><br>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step D</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the popup window, enter the <b>Name</b> as <b>SparkOpportunityTrigger</b> and select the <b>sObject</b> value as <b>Opportunity</b>. Click <b>Submit</b>.</p><br>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/salesforce/opportunity.png" class="setup-image">
+								</div>
+							</div>														
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step E</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Go to the <b>File</b> menu in the top left corner and click <b>Save</b>.</p>
+									<p>Note: The code snippet is generated based on the Salesforce configuration selection made above.</p>
+									<div class="text-file"><textarea id="Opportunity" rows="5" cols="100" readonly></textarea></div>
+									<img alt="" src="https://d24wgzqqegxpap.cloudfront.net/api/images/salesforce/opportunity-code.png" class="setup-image">
+								</div>																
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step F</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the left side panel, under the <b>PLATFORM TOOLS</b> section, expand on the <b>Custom Code</b> option and select <b>Apex Classes</b>. Now, click on the <b>New</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce4.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step G</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Click <b>Save</b> button. Once saved, if configured in sandbox environment, promote all to your Production environment.</p>
+									<p>Note: The code snippet is generated based on the Salesforce object selection made above.</p>
+									<div class="text-file"><textarea id="OpportunityTestCase" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/accountApexClass.png" class="setup-image">
+								</div>						
+							</div>
+						</div>
+						<div class="campaign" style="display:none;">
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step A</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the <b>PLATFORM TOOLS</b>, expand on the <b>Custom Code</b> option in the left side panel and select <b>Apex Triggers</b>. Now, click on the <b>Developer Console</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/appextriggers.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step B</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>	Click on the cross mark as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce6.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step C</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Go to the <b>File</b> menu in the top left corner. Select <b>New</b> and then <b>Apex Trigger</b> as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce7.png" class="setup-image">
+								</div>
+							</div><br>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step D</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the popup window, enter the <b>Name</b> as <b>SparkCampaignTrigger</b> and select the <b>sObject</b> value as <b>Campaign</b>. Click <b>Submit</b>.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/campaign.png" class="setup-image">
+								</div>
+							</div>														
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step E</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Go to the <b>File</b> menu in the top left corner and click <b>Save</b>.</p>
+									<p>Note: The code snippet is generated based on the Salesforce configuration selection made above.</p>
+									<div class="text-file"><textarea id="Campaign" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/campaign-code.png" class="setup-image">
+								</div>						
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step F</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>In the left side panel, under the <b>PLATFORM TOOLS</b> section, expand on the <b>Custom Code</b> option and select <b>Apex Classes</b>. Now, click on the <b>New</b> button in the center of the page as shown.</p><br>
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/salesforce4.png" class="setup-image">
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label><b>Step G</b></label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">
+									<p>Now, copy and paste the below code snippet as shown. Click <b>Save</b> button. Once saved, if configured in sandbox environment, promote all to your Production environment.</p>
+									<p>Note: The code snippet is generated based on the Salesforce object selection made above.</p>
+									<div class="text-file"><textarea id="CampaignTestCase" rows="5" cols="100" readonly></textarea></div>	
+									<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/salesforce/ligthning_ui/accountApexClass.png" class="setup-image">
+								</div>						
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row spark-config-block">
+					<div class="large-10 medium-10 columns">
+						<h3 class="heading-01">Cisco Spark configuration</h3>
+						<div class="large-8 columns sub-config-block">
+							<div class="large-2 medium-3 columns small-mobile">
+								<label>Space</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<select name="room" id="rooms" class="custom-select">
+								<option value='0'>Please Select</option></select><span class="has-tip tip-right" id="tooltip" title="Space in which you'd like to receive notifications. Ensure newly created spaces have at least one message in it for it to show up here."
+									data-tooltip><img class="tool-tip"></span>
+							</div>
+							<div class="rooms-loading" style="display: none;"></div>
+						</div>
+						<div class="large-8 columns sub-config-block left">
+							<div class="large-2 medium-3 columns small-mobile config-optional">
+								<label>Configuration name (optional)</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<input type="text" name="displayName" id="displayName" class="integration-name"	value="">
+							</div>							
+						</div>
+					</div>
+				</div>
+				<div class="row integration-config-block">
+					<div class="large-5 medium-5 columns"> &nbsp;</div>
+					<div class="large-4 medium-4 columns left">
+						<button id="cancel-button" class="button">Cancel</button>
+						<button id="submit-button" class="button secondary text">Add Integration</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</body>
+</html>

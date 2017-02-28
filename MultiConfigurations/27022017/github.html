@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>GitHub Integration to Spark</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.css" rel="stylesheet" type="text/css"> 
+<link href="https://d24wgzqqegxpap.cloudfront.net/api/css/collab-ui-min.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/styles.css" rel="stylesheet" type="text/css"> 
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/select2.min.css" rel="stylesheet" /> 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.js"></script> 
+<script type="text/javascript" src="https://d24wgzqqegxpap.cloudfront.net/api/js/porthole.min.js"></script>
+<script type="text/javascript" src="https://183.82.99.100:8443/CiscoWebcontent/js/scriptsRoom.js"></script>
+<script src="https://183.82.99.100:8443/CiscoWebcontent/js/select2.min.js"></script>
+<script>
+	integration_app_icon_url="https://d24wgzqqegxpap.cloudfront.net/api/images/github/github.png";
+	clientAppRevokeMsg = '<p class="integrationAuthMsg"><span class="info-icon" title=""> &nbsp;</span><span>We are facing difficulty while accessing your GitHub account. Please click on Add to authorize.</span></p>';
+	var repo_modified=false;
+	var repo_name_old="";
+	var selected_repo_id="0";
+	var application_id="3";
+	var instanceUuid="";
+	var repo_id = "";
+	var room_id = "";
+	var editAuthMode = "";
+	var eventsMatchFlag = true;
+	var authConfigFlag = false;
+	var unauthConfigFlag = false;
+	var validateLink = false;
+	var tokenExists = false;
+	var oauthRequired=true;
+	var instance_uuid="";
+	var unAuthJsonString = "";
+	var selectedRoomName = "";
+	var action_url = "";
+	var actionType = "";
+	var authJsonString = "";
+	authenticationFlag = true;
+	appName = "GitHub";
+	postMessageToSpark = "GitHub "+postMessageToSpark;
+	updateMessageToSpark= "GitHub "+updateMessageToSpark;
+	removeMessageToSpark= "GitHub "+removeMessageToSpark;
+	$( document ).ready(function() {
+		application_auth_details_url="/api/applications/"+application_id;
+		token_url="/api/integrations/"+integration_id+"/authDetails";
+		save_spark_token_url="/api/clients/tokens";
+		save_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		get_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		configuration_settings_url="/api/integrations/"+integration_id+"/uiSettings";
+		save_configuration_settings_url="/api/integrations/instances";
+		update_configuration_settings_url="/api/integrations/instances/";
+		delete_instance_url="/api/integrations/instances/";
+		list_integration_instances_url="/api/integrations/instances";		
+		removeall_integration_instances_url="/api/integrations/instances";		
+		delete_spark_token_url="/api/clients/tokens";
+		delete_integration_token_url="/api/integrations/"+integration_id+"/appTokens";			
+		action=action.toLowerCase();
+		if(action=="connect") {
+			$("#integrations-block").hide();
+			$(".github-add-config").hide();
+			$('#integration-form').hide();
+			formAction="connect";
+			validateIntegrationAppToken();	
+		} else if(action=="disconnect") {
+			formAction="disconnect";
+			removeAllIntegrationInstances(formAction);
+		} else {
+			var app_code =   gup(window.top.location.href, 'code');
+			if(app_code!="") {
+				generateIntegrationAppToken(app_code); 
+				console.log("code..." + app_code);
+			} else {
+				validateIntegrationAppTokenDB();
+				console.log("token validating....list");
+			}
+		}
+		$("#rooms").select2();
+		$(".unauth-link").click(function(){
+			getUnauth();
+		});
+		$(".unauth-form-link").click(function(){
+			getUnauth();
+		});
+		$(".auth-link").click(function(){
+			console.log("in link clicked!!!!!!!!!");
+			authenticationFlag = true;
+			oauthRequired=true;
+			validateLink=true;
+			$(".auth").hide();
+			$('#integration-form').hide();
+			$('#integrations-block').hide();
+			$('.github-add-config').hide();
+			$(".github-unauth").hide();
+			$(".github-note").html('Additional Instructions');
+			hideGitHubNoteInstructions();
+			expandAddNoteSetup();
+			validateIntegrationAppToken();
+		});
+		$("#github-icon").attr("src", integration_app_icon_url);
+		$(".spark-icon").attr("src", spark_icon_url);
+		$("#github #submit-button").click(function (e){
+			e.preventDefault();
+			saveGitHubInstance();
+		});
+		$("#cancel-button").click(function (e){
+			e.preventDefault();		
+			console.log("in cancel button");
+			$('#integration-form').hide();
+			listIntegrations();
+			resize();
+		});
+		$('#github #add-config').click(function(e){
+			e.preventDefault();	
+			formAction="add";
+			if(listResultData.length != 0)
+				$("#submit-button").text("Add");
+			else
+				$("#submit-button").text("Add Integration");	
+			console.log("token exists...." + tokenExists + " authenticationFlag.." + authenticationFlag +"isClientAppTokenValid..."+isClientAppTokenValid);
+			if(listResultData.length != 0 && tokenExists){
+				console.log("list not null and token exists...");
+				if(authenticationFlag){
+					if(isClientAppTokenValid){
+						console.log("add..isClientAppTokenValid..if"+ isClientAppTokenValid);
+						loadGitHubForm();
+						$('.client-app-warning').html('');
+					}else{
+						console.log("add..isClientAppTokenValid..else"+ isClientAppTokenValid);
+						validateLink = false;
+						setIntegrationAppAuthDetails(integration_id);
+					}
+				}else{
+					console.log("list not null and token exists...authenticationFlag false");
+					if(!isClientAppTokenValid){validateLink = false;
+					setIntegrationAppAuthDetails(integration_id);}
+				}
+			}else{
+				console.log("list null and token not exists...");
+				validateLink=false;
+				if(authenticationFlag){
+					console.log("authenticationFlag...add" + authenticationFlag);
+					validateIntegrationAppToken();
+				}else{
+					console.log("un auth add click..." + validateLink);
+					if(!isClientAppTokenValid){
+						console.log("before setIntegrationAppAuthDetails...");
+						setIntegrationAppAuthDetails(integration_id);
+					}
+				}
+			}	
+			
+			if(!authenticationFlag && isClientAppTokenValid){
+				console.log("in authenticationFlag.." + authenticationFlag + " isClientAppTokenValid.."+isClientAppTokenValid);
+				$("#expand-close-config").removeClass("expandarrow");
+				$("#expand-close-config").addClass("closearrow");
+				$('.closearrow').attr('title','close');
+				$("#showConfig").show();
+				$("#config-label").html('');
+				$("#config-label").html('Please follow the below steps to add this configuration. You can add/edit/delete multiple configurations at anytime.');
+				loadGitHubForm();
+				loadRooms();
+			}else{
+				hideGitHubNoteInstructions();
+			}
+		});
+		$("#expand-close").addClass("expandarrow");
+		$("#add-org-expand-close").addClass("expandarrow");
+		$("#note-permission-expand-close").addClass("expandarrow");
+		$("#switch-unauth-expand-close").addClass("expandarrow");
+		$("#add-auth-note-expand-close").addClass("expandarrow");
+		$('#expand-close').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				expandSetup();
+			}else{
+				collapseSetup();
+			}
+			resize();
+		});
+		$('#add-org-expand-close').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				expandAddOrgSetup();
+			}else{
+				collapseAddOrgSetup();
+			}
+			resize();
+		});
+		$('#note-permission-expand-close').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				expandNotePermissionSetup();
+			}else{
+				collapseNotePermissionSetup();
+			}
+			resize();
+		});
+		$('#switch-unauth-expand-close').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				expandSwitchUnauthSetup();
+			}else{
+				collapseSwitchUnauthSetup();
+			}
+			resize();
+		});
+		$('#add-auth-note-expand-close').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				expandAddNoteSetup();
+			}else{
+				collapseAddNoteSetup();
+			}
+			resize();
+		});
+		$("#expand-close-config").addClass("closearrow");
+		$('#expand-close-config').click(function(e){
+			e.preventDefault();
+			if($(this).attr('class')=='closearrow'){
+				 expandConfig();
+			}else{
+				 collapseConfig();
+			}
+			resize();
+		});
+		$(".closearrow").mouseover(function(){
+			$('.closearrow').attr('title','close');
+		});
+		$(".expandarrow").mouseover(function(){
+			$('.expandarrow').attr('title','expand');
+		});
+		$('#cancel-remove-integration').click(function(e){			
+			e.preventDefault();
+			$('#remove-integration-popup').foundation('close');
+		});
+		$("#github #repos").on('change',function(){
+			if($('#repos').val()!=0&&formAction=="authupdate")
+				$(".edit-itemconfig-info").hide();
+		});	
+		$("#github #rooms").on('change',function(){
+			if($('#rooms').val()!=0&&formAction=="authupdate" || formAction=="unauthupdate")
+				$(".edit-roomconfig-info").hide();
+		});	
+		$(document).on("click", ".same-config-yes" , function(e) {
+			console.log("yes clicked!!!!!!!!!!!!!");
+			if(authenticationFlag)
+				saveGitHubAuthInstance();
+			else
+				saveGitHubUnAuthInstance();
+		});
+		$(document).on("click", ".same-config-no" , function(e) {
+			console.log("no clicked!!!!!!!!!!!!!");
+			$('#same-configuration').foundation('close');
+		});
+		$(document).on("click", "#github #instance-list-block .edit-config" , function(e) {
+			repo_modified=false;
+			room_modified=false;
+			validateLink=false;
+			$("#submit-button").text("Save");
+			$(".client-app-warning").hide();
+			$('.auth').hide();
+			$('.unauth').hide();
+			instanceId=this.id;
+			$.each(listResultData,function(index,value){
+				if(value["instanceId"]==instanceId) {
+					instanceData=value;				
+				}
+			});
+			selected_room_id=instanceData.channelId;
+			var config=JSON.parse(instanceData.configJson);		
+			editAuthMode = config.unauthmode;
+			console.log("editAuthMode.." + editAuthMode);
+			if(!editAuthMode){
+				formAction="authupdate";
+				$('.auth').hide();
+				console.log("in true editAuthMode.." + editAuthMode);
+				authenticationFlag = true;
+				selected_repo_id=config.repo_id;
+				hideGitHubNoteInstructions();
+				$(".github-note").html('Additional Instructions');
+			}else{
+				formAction="unauthupdate";
+				$('.unauth').hide();
+				console.log("in false editAuthMode.." + editAuthMode);
+				authenticationFlag = false;
+				expandConfig();
+				$("#config-label").html('Steps you had executed to add this configuration. View for reference, if needed. Otherwise, steps need not be executed again.');
+				instance_uuid = instanceData.instanceUuid;
+			}		
+			loadGitHubForm();
+			$('#displayName').val(config.displayName);
+			resize();	
+			room_id_old = instanceData.channelId;	
+			if(!editAuthMode){
+				console.log("in true editAuthMode.." + editAuthMode);
+				authenticationFlag = true;
+				instanceUuid = instanceData.instanceUuid;
+				repo_name_old = config.repo_name;
+				var notifications=config.notifications;
+				var events = notifications.events;			
+				if($.isArray(events)) {
+					$.each(events,function(index,value){
+						$("input[type=checkbox][value="+value+"]").prop("checked",true);
+					});
+				} else {
+					$("input[type=checkbox][value="+events+"]").prop("checked",true);
+				}
+			}else{
+				console.log("in false editAuthMode.." + editAuthMode);
+				authenticationFlag = false;
+				var config = JSON.parse(instanceData.configJson);
+				$('#webhookURL').val(config.webhookUrl);
+			}
+		});	
+    });
+	function getUnauth(){
+		authenticationFlag = false;
+		oauthRequired=false;
+		validateLink=true;
+		$(".client-app-warning").hide();
+		$(".github-add-auth").hide();
+		$(".note-on-permission").hide();
+		$(".unauth-nonauth-link").hide();
+		$(".unauth").hide();
+		$("#expand-close-config").removeClass("expandarrow");
+		$("#expand-close-config").addClass("closearrow");
+		$('.closearrow').attr('title','close');
+		$("#showConfig").show();
+		$("#config-label").html('Please follow the below steps to add this configuration. You can add/edit/delete multiple configurations at anytime.');
+		loadGitHubForm();
+		loadRooms();
+		console.log("un auth");
+	}
+	function expandSetup(){
+		 $('#github-showSetup').hide();
+		 $("#expand-close").removeClass("closearrow");
+		 $("#expand-close").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');
+	}
+	function collapseSetup(){
+		$("#expand-close").addClass("closearrow");
+		$("#expand-close").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#github-showSetup').show();		
+	}
+	function expandAddOrgSetup(){
+		$('#add-github-org').hide();
+		$("#add-org-expand-close").removeClass("closearrow");
+		$("#add-org-expand-close").addClass("expandarrow");
+		$('.expandarrow').attr('title','expand');
+	}
+	function collapseAddOrgSetup(){
+		$("#add-org-expand-close").addClass("closearrow");
+		$("#add-org-expand-close").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#add-github-org').show();		
+	}
+	function expandNotePermissionSetup(){
+		 $('#note-about-permission').hide();
+		 $("#note-permission-expand-close").removeClass("closearrow");
+		 $("#note-permission-expand-close").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');	
+	}
+	function collapseNotePermissionSetup(){
+		$("#note-permission-expand-close").addClass("closearrow");
+		$("#note-permission-expand-close").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#note-about-permission').show();
+	}
+	function expandSwitchUnauthSetup(){
+		 $('#switch-unauth-mode').hide();
+		 $("#switch-unauth-expand-close").removeClass("closearrow");
+		 $("#switch-unauth-expand-close").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');	
+	}
+	function collapseSwitchUnauthSetup(){
+		$("#switch-unauth-expand-close").addClass("closearrow");
+		$("#switch-unauth-expand-close").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#switch-unauth-mode').show();
+	}
+	function expandConfig(){
+		 $('#showConfig').hide();
+		 $("#expand-close-config").removeClass("closearrow");
+		 $("#expand-close-config").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');	
+	}
+	function collapseConfig(){
+		$("#expand-close-config").addClass("closearrow");
+		$("#expand-close-config").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#showConfig').show();
+	}
+	function expandAddNoteSetup(){
+		 $('#add-note-permission').hide();
+		 $("#add-auth-note-expand-close").removeClass("closearrow");
+		 $("#add-auth-note-expand-close").addClass("expandarrow");
+		 $('.expandarrow').attr('title','expand');	
+	}
+	function collapseAddNoteSetup(){
+		$("#add-auth-note-expand-close").addClass("closearrow");
+		$("#add-auth-note-expand-close").removeClass("expandarrow");
+		$('.closearrow').attr('title','close');
+		$('#add-note-permission').show();
+	}
+	function hideGitHubNoteInstructions(){
+		expandSetup();
+		$("#add-org-expand-close").addClass("expandarrow");
+		$("#note-permission-expand-close").addClass("expandarrow");
+		$("#switch-unauth-expand-close").addClass("expandarrow");
+		$("#add-github-org").hide();
+		$("#note-about-permission").hide();
+		$("#switch-unauth-mode").hide();
+	}
+	function validateIntegrationAppToken() {
+		console.log("validating token....");
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					console.log("token exist");
+					validateIntegrationAppspecificToken();
+				} else {
+					console.log("token not exist");
+					setIntegrationAppAuthDetails(integration_id);
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function validateIntegrationAppspecificToken(){
+		console.log("in validateIntegrationAppspecificToken...");
+		$.ajax({
+			url: configuration_settings_url+"?userId="+user_id,
+			async: true,
+			success: function(result){
+					$(".unauth").show();
+					if(result["integrationSpecificSettings"]["isValidToken"]==false && result["integrationSpecificSettings"]["isValidToken"] != undefined){
+						isClientAppTokenValid = false;
+						console.log("tokenExists..." + tokenExists);
+						console.log("***** validateIntegrationsApp token  with validateClientToken *********");
+						$('.client-app-warning').html(clientAppRevokeMsg);
+						if(authenticationFlag&&validateLink)listIntegrations();
+						$('.auth').hide();
+						if(formAction=="add" && !validateLink){
+							setIntegrationAppAuthDetails(integration_id);
+						}
+					}else{
+						console.log("in validateIntegrationAppspecificToken is true");
+						tokenExists = true;
+						$(".github-add-auth").hide();
+						loadGitHubForm();
+					}
+				},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+				   alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function setIntegrationAppAuthDetails() {
+		console.log("in setIntegrationAppAuthDetails..");
+		var OAUTHURL    =   '';
+		var CLIENTID    =   '';
+		var TYPE        =   'code';
+		$.ajax({url: application_auth_details_url,
+			async:true,
+			success: function(result){
+				CLIENTID=result.clientId;
+				OAUTHURL= result.authorizationEndpoint;
+				OAUTHURL=OAUTHURL+'?client_id='+CLIENTID+'&response_type='+TYPE+'&scope=admin:org_hook write:repo_hook admin:repo_hook user repo';
+				loginWithAuthDetails(OAUTHURL);	
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});		
+	}
+	function loginWithAuthDetails(oauthURL) {
+		console.log("in loginWithAuthDetails.." + validateLink);
+		isRedirect=true;
+		if(isRedirect) {
+			if(formAction=="add" || validateLink) {
+				console.log("in url hitting...");
+				window.top.location.href = oauthURL;
+				$(".note-on-permission").hide();
+				$(".unauth-nonauth-link").hide();
+				$(".github-add-auth").hide();
+			} else {
+				console.log("in unauth action....loginWithAuthDetails");
+				$(".unauth").hide();
+				$(".unauth-nonauth-link").show();
+				$(".github-add-auth").show();
+				$(".note-on-permission").show();
+				resize();
+			}			
+			console.log('You are using a mobile device!' + oauthURL);
+		} else {
+			var win = window.open(oauthURL, "windowname1", 'width=600, height=600'); 
+			if(win){ 
+			}else{
+				alert(popblockedMessage); 
+				return false;
+			}
+			var pollTimer = window.setInterval(function() { 
+				try {
+					if (win.document.URL.indexOf("code") != -1) {
+						window.clearInterval(pollTimer);
+						var url =   win.document.URL;
+						accessCode =   gup(url, 'code');
+						win.close();
+						getIntegrationAppTokenDetails(accessCode);
+					}
+				} catch(e) {
+					console.log('error while getting authorization code..'+e);
+				}
+			}, 100);
+		}
+    }
+	
+	function getIntegrationAppTokenDetails(code) {
+		var jsonObject={};
+		jsonObject["integrationId"] = integration_id;
+		jsonObject["authSettings"] = {};
+		jsonObject["authSettings"]["code"] = code;
+		jsonString=JSON.stringify(jsonObject);
+		$.ajax({url: token_url,
+			async:true,
+			type: "POST",
+			data: jsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){
+				var tokenDetails=result["integrationSpecificAuthDetails"]["tokenDetails"];
+				var jsonObject={};
+				jsonObject["applicationId"] = application_id;
+				jsonObject["integrationId"] = integration_id;
+				jsonObject["accessToken"] = tokenDetails.access_token;
+				jsonObject["expires"] = "3600";
+				var jsonString=JSON.stringify(jsonObject);
+				saveIntegrationAppToken(jsonString);
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function getListInstances(){
+		appTokenExists = true;
+		$.ajax({url: list_integration_instances_url+"?userId="+user_id+"&integrationId="+integration_id,
+			async:true,
+			success: function(result){
+				 instanceList = result;
+				 console.log("getListInstances() success : "+JSON.stringify(result));
+				 if(instanceList.length != 0){
+					 console.log("instanceList in getListInstances()"+instanceList.length +" isClientAppTokenValid..."+isClientAppTokenValid);
+					 if(!isClientAppTokenValid){
+						$('.client-app-warning').html(clientAppRevokeMsg);
+					 }
+					 listIntegrations();
+				 }else{
+					 loadGitHubForm();
+				 }
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }
+			}
+		})
+	}
+	function saveIntegrationAppToken(jsonData){
+		$.ajax({url: save_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "POST",
+			data: jsonData,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){
+				connectIntegration();
+				console.log("isClientAppTokenValid in saveToken *** "+isClientAppTokenValid);
+				if(isClientAppTokenValid == false){
+					getListInstances();
+				}else {
+					$(".unauth").show();
+					loadGitHubForm();
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});	
+	}
+	function generateIntegrationAppToken(app_code) {
+		console.log("token checking..");
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					console.log("token exists...in generateIntegrationAppToken");
+					validateIntegrationSpecificAppToken(app_code);
+				} else {
+					console.log("token not exists...in generateIntegrationAppToken");
+					getIntegrationAppTokenDetails(app_code); 
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function validateIntegrationSpecificAppToken(app_code) {
+		console.log("in validateIntegrationSpecificAppToken..app_code" +app_code);
+		$.ajax({
+			url: configuration_settings_url+"?userId="+user_id,
+			async: true,
+			success: function(result){
+				if(result["integrationSpecificSettings"]["isValidToken"]==false && result["integrationSpecificSettings"]["isValidToken"] != undefined){
+					isClientAppTokenValid = false;
+					console.log("***** validateIntegrationsApp token  with validateIntegrationSpecificAppToken() *********");
+					if(app_code!="")
+					getIntegrationAppTokenDetails(app_code);
+					else setIntegrationAppAuthDetails(integration_id);						
+					console.log("isClientAppTokenValid ***** "+isClientAppTokenValid);
+				}else{
+					isClientAppTokenValid = true;
+					console.log("token id exists ........in validateIntegrationSpecificAppToken");
+					listIntegrations();
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+				   
+				}
+			}
+		});
+	}
+	function getAuthUser(){
+		console.log("isClientAppTokenValid..." + isClientAppTokenValid);
+	if(ui_settings["integrationSpecificSettings"]["settings"] != undefined && ui_settings["integrationSpecificSettings"]["settings"] != null && isClientAppTokenValid && appTokenExists){
+		console.log("in get authuser cond");
+		authenticated_user=ui_settings["integrationSpecificSettings"]["settings"]["userDetails"].login;
+		}
+	}
+	function loadGitHubForm(){
+		$("#form").trigger("reset");
+		$('#integrations-block').hide();
+		$('.github-add-config').hide();
+		$('.github-links').css('margin-left', '20px');
+		$("#integration-form").show();
+		$(".edit-roomconfig-info").hide();
+		$(".edit-itemconfig-info").hide();
+		$(".rooms-loading").show();
+		if(authenticationFlag){
+			appTokenExists = true;
+			$(".github-unauth").hide();
+			$(".github-auth").show();
+			$(".unauth").hide();
+			$(".github-instructions").show();
+		}else{
+			$(".github-auth").hide();
+			$(".github-instructions").hide();
+			$(".github-unauth").show();
+			$(".auth").hide();
+		}
+		resize();
+		if(ui_settings=="") {
+			if(authenticationFlag)$(".settings-loading").show();
+			$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					$(".settings-loading").hide();
+					ui_settings=result;	
+					loadConfigurationSettings();
+					loadRooms();
+				},
+				 error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   }else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+			getAllSparkRooms();
+		}else{
+			loadConfigurationSettings();loadRooms();
+			if(!authenticationFlag)loadWebhookSettings();
+		}
+    }
+	function loadConfigurationSettings() {
+		if(authenticationFlag){
+			if(ui_settings["sparkRoomSettings"] && ui_settings["integrationSpecificSettings"]["settings"] && isClientAppTokenValid) {
+				var itemFlag=false;
+				var roomFlag=false;
+				var rooms = "";
+				var repos = ui_settings["integrationSpecificSettings"]["settings"]["Repos"];
+				$('#repos')[0].options.length = 1;
+				var authorizedto=ui_settings["integrationSpecificSettings"]["settings"]["userDetails"].login;
+				authenticated_user=authorizedto;			
+				if(authorizedto!=""&&authorizedto!=undefined) {
+					$('#authenticted-to').html(authorizedto);
+					$(".authenticted-block").css("display","block");
+				}
+				var isReposExists = false;
+				$.each(repos, function(id,obj){
+					isReposExists = true;
+					console.log("admin value..." + obj["permissions"].admin);
+					if(obj["permissions"].admin)
+					$("#repos").append($('<option>').text(obj.full_name).attr('value',obj.id));
+					if(formAction=="authupdate" && selected_repo_id==obj.id && itemFlag==false){
+						selected_repo_id=obj.id;
+						itemFlag=true;
+					}
+				}); 
+				if(formAction=="authupdate" && itemFlag==false && !validateLink){
+					selected_repo_id = "0";
+					$(".edit-itemconfig-info").show();
+				}
+				$('#rooms')[0].options.length = 1;
+				rooms = ui_settings["sparkRoomSettings"].items;
+				if(allRooms.length !=0) {
+					rooms = allRooms;
+					$(".rooms-loading").hide();
+				}
+				//if(!isMobile)$("#rooms").customselect("destroy");
+				$.each(rooms, function(id,obj){
+					$("#rooms").append($('<option>').text(obj.title).attr('value',obj.id));
+					if(formAction=="authupdate" && selected_room_id==obj.id&&roomFlag==false){
+						selected_room_id=obj.id;
+						roomFlag=true;
+					}
+				});
+				if(formAction=="authupdate" && roomFlag==false && !validateLink){
+					selected_room_id = "0";
+					$(".edit-roomconfig-info").show();
+				}
+				$("#rooms").val(selected_room_id);
+				$("#repos").val(selected_repo_id);
+				$('#select2-rooms-container').html($("#rooms option:selected").text());
+				selected_repo_id="0";
+				if(isReposExists) {
+					
+				} else {
+					$('.no-configuration-block').show();
+					$('#form').hide();
+				}
+				//if(!isMobile)$("#rooms").customselect();
+			}else{
+				alert("We've experienced some difficulty. Try again.");
+			}
+		}else{
+			$(".authenticted-block").css("display","none");
+			if((ui_settings["sparkRoomSettings"] !=undefined) && (ui_settings["integrationSpecificSettings"]["settings"] != undefined) ){
+				var roomFlag=false;
+				var rooms = "";
+				var webhook_details = ui_settings["integrationSpecificSettings"]["settings"]["WebhookUrl"];
+				if(formAction != "unauthupdate" || validateLink){
+					instance_uuid = webhook_details["instanceUuid"];
+				}
+				$('#rooms')[0].options.length = 1;
+				rooms = ui_settings["sparkRoomSettings"].items;
+				if(allRooms.length !=0) {
+					rooms = allRooms;
+					$(".rooms-loading").hide();
+				}
+				//if(!isMobile)$("#rooms").customselect("destroy");
+				$.each(rooms, function(id,obj){
+					$("#rooms").append($('<option>').text(obj.title).attr('value',obj.id));
+					if(formAction=="unauthupdate" && selected_room_id==obj.id&&roomFlag==false){
+						selected_room_id=obj.id;
+						roomFlag=true;
+					}
+				});
+				if(formAction=="unauthupdate" && roomFlag==false && !validateLink){
+					selected_room_id = "0";
+					$(".edit-roomconfig-info").show();
+				}
+				if(formAction != "unauthupdate" || validateLink){
+					$('#webhookURL').val(webhook_details["webhookUrl"]);
+				}						
+				$("#rooms").val(selected_room_id);
+				$('#select2-rooms-container').html($("#rooms option:selected").text());
+				//if(!isMobile)$("#rooms").customselect();
+			}else{
+				alert("We've experienced some difficulty. Try again.");
+			}
+		}	
+	}
+	function loadWebhookSettings(){
+		$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					if(ui_settings["integrationSpecificSettings"]["settings"] != undefined){
+						if(formAction != "unauthupdate" || validateLink){
+						var webhook_details = result["integrationSpecificSettings"]["settings"]["WebhookUrl"];
+							instance_uuid = webhook_details["instanceUuid"];
+							$('#webhookURL').val(webhook_details["webhookUrl"]);
+						}	
+					}
+				},
+				 error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   }else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+	}
+	function unAuthValidateConfiguration(instance){
+	    console.log("un auth validating Configuration....");
+		unauthConfigFlag = false;
+		if(instance.channelId==room_id){
+			console.log("matched...room");
+			unauthConfigFlag = true;
+		}
+	}
+	function authValidateConfiguration(instance, notifications){
+	    console.log("auth validating Configuration....");
+		var configData = JSON.parse(instance.configJson);
+		var configEvents = configData.notifications;
+             configEvents = configEvents.events;	
+		var notificationsLength = notifications.length;
+		var matchCount = 0;
+		authConfigFlag = false;
+		eventsMatchFlag = true;
+		if(instance.channelId==room_id&&configData.repo_id==repo_id){
+			console.log("matched...room");
+			authConfigFlag = true;
+		}
+		if($.isArray(notifications)){
+			console.log("configEvents..." + configEvents +"length...." + configEvents.length);
+			if($.isArray(configEvents)){
+				for (var p in notifications) {
+					if(configEvents[p] != notifications[p]){
+						eventsMatchFlag = false;
+						console.log("Match: " + configEvents[p] + "!=" + notifications[p]);
+					}else {
+						matchCount = matchCount +1;
+					   console.log("Match: " + configEvents[p] + "==" + notifications[p]);
+					}
+				}
+				console.log("match count..." + matchCount + "configEvents.length..." + configEvents.length);
+				if(matchCount==configEvents.length&&notificationsLength==configEvents.length){
+					eventsMatchFlag = true;
+					return false;
+				}else{
+					eventsMatchFlag = false;
+				}
+			}else{
+			    console.log("not matched...configEvents");
+				eventsMatchFlag = false;
+			}
+		}else{
+			if($.isArray(configEvents)){
+			    eventsMatchFlag = false;
+				console.log("not matched...array" + eventsMatchFlag);
+			}else{
+			  if(configEvents==notifications){
+				eventsMatchFlag = true;
+				 console.log("matched single.." + eventsMatchFlag);
+			  }else{
+				eventsMatchFlag = false;
+			  }
+			}
+		}
+	}
+    function saveGitHubInstance() {
+		var res = $('form').serializeObject();
+		selectedRoomName=$("#rooms option:selected").text();
+		room_id = $("#rooms option:selected").val();
+		var jsonData = {};
+		jsonData["channelId"] = room_id;
+		jsonData["integrationId"] = integration_id;
+		jsonData["status"] = "ACTIVE";
+		jsonData["userId"] = user_id;
+		jsonData["messageFormat"]="GitHub Bot :"+"Hello...User";	
+		postAddMessageToRoom(room_id,appName);
+		if(authenticationFlag){
+			var repoDetails;
+			repoDetails = res.repositories;
+			var repoargs = repoDetails.split("/");
+			repo_id = $("#repos").val();
+			var repo_name = $("#repos option:selected").text();
+			var repo_name_args = repo_name.split("/");
+			if(formAction=="authupdate") {
+				jsonData["instance_id"] = instanceId;
+				jsonData["repo_name_old"] = repo_name_old;
+				jsonData["room_id_old"] = room_id_old;
+				if(room_id!=room_id_old) {
+					room_modified=true;
+					jsonData["messageToSpark"] = updateMessageToSpark;
+				} else {
+					room_modified=false;
+				}
+				if(repo_name_old!=repo_name) {
+					repo_modified=true;
+				} else {
+					repo_modified=false;
+				}
+				jsonData["room_modified"] = room_modified;
+				jsonData["repo_modified"] = repo_modified;
+				jsonData["instanceUuid"] = instanceUuid;
+				jsonData["configJson"]=JSON.parse(instanceData.configJson);
+				action_url = update_configuration_settings_url+instanceId;
+				actionType = "PUT";
+				$('.loading-first-block').html('Please wait while your Integration is being updated');
+			 } else{
+				jsonData["configJson"]={};
+				action_url = save_configuration_settings_url;
+				actionType = "POST";
+				jsonData["messageToSpark"] = postMessageToSpark;
+				$('.loading-first-block').html('Please wait while your Integration is being set up');
+			}
+			jsonData["configJson"]["repo_id"]= res.repositories;
+			jsonData["configJson"]["repo_name"]= repo_name;
+			jsonData["configJson"]["displayName"]= res.displayName;
+			jsonData["configJson"]["notifications"]={};			
+			jsonData["configJson"]["notifications"]["events"] = res.events;
+			jsonData["configJson"]["unauthmode"]=false;
+			authJsonString = JSON.stringify(jsonData);
+			var notificationslength = objLength(res.events);
+			var notifications = res.events;
+			if(listResultData.length != 0 && notificationslength !=0){
+				$.each(listResultData, function(i, instance) {
+					var configData = JSON.parse(instance.configJson);
+					console.log("config data...." +JSON.stringify(configData));
+					if(formAction=="authupdate"&&instance.instanceId!=instanceId&&!configData.unauthmode){
+					 authValidateConfiguration(instance, notifications);
+					 if(eventsMatchFlag==true&&authConfigFlag==true){
+						 console.log("eventsMatchFlag in cond.." + eventsMatchFlag + " authConfigFlag.." + authConfigFlag);
+							return false;
+						}
+					}
+					if(formAction!="authupdate"&&!configData.unauthmode){
+					 authValidateConfiguration(instance, notifications);
+					  if(eventsMatchFlag==true&&authConfigFlag==true){
+						 console.log("eventsMatchFlag in cond.." + eventsMatchFlag + " authConfigFlag.." + authConfigFlag);
+							return false;
+						}
+					}
+				});
+			}
+			if($('#repos').val()==0){
+				alert("Please select Repository");
+			} else if(notificationslength==0) {
+				alert("Please select atleast one Event");
+			} else if($('#rooms').val()==0 || $('#rooms').val()==null){
+				alert("Please select Space");
+			} else if(listResultData.length != 0 && eventsMatchFlag==true && authConfigFlag==true){
+				if(formAction=="update"){
+					$.each(listResultData, function(i, instance) {
+						if(formAction=="update"&&instance.instanceId==instanceId){
+						 validateConfiguration(instance, notifications);
+						}
+					});
+					if(room_modified || !eventsMatchFlag)
+						$('#same-configuration').foundation('open');
+					else
+						saveGitHubAuthInstance();
+				}else{
+					$('#same-configuration').foundation('open');
+				}
+			} else { 
+				saveGitHubAuthInstance();
+			}
+		}else{
+				if(formAction=="unauthupdate") {
+					jsonData["instance_id"] = instanceId;
+					if(room_id!=room_id_old) {
+						room_modified=true;
+						jsonData["messageToSpark"] = updateMessageToSpark;
+					} else {
+						room_modified=false;
+					}
+					jsonData["room_modified"] = room_modified;
+					jsonData["configJson"]=JSON.parse(instanceData.configJson);
+					action_url=update_configuration_settings_url+instanceId;
+					actionType="PUT";
+					$('.loading-first-block').html('Please wait while your Integration is being updated');
+				} else {
+					jsonData["configJson"]={};
+					jsonData["messageToSpark"] = postMessageToSpark;
+					action_url=save_configuration_settings_url;
+					actionType="POST";
+					$('.loading-first-block').html('Please wait while your Integration is being set up');
+				}
+				jsonData["configJson"]["displayName"]= res.displayName;
+				jsonData["configJson"]["webhookUrl"]=$("#webhookURL").val();
+				jsonData["configJson"]["unauthmode"]=true;
+				jsonData["instanceUuid"]=instance_uuid;
+				jsonData["messageFormat"]="github Bot :"+"Hello...User";
+				unAuthJsonString = JSON.stringify(jsonData);
+				if(listResultData.length != 0){
+					$.each(listResultData, function(i, instance) {
+						var configData = JSON.parse(instance.configJson);
+						if(formAction=="unauthupdate"&&instance.instanceId!=instanceId&&configData.unauthmode){
+						 unAuthValidateConfiguration(instance);
+						 if(unauthConfigFlag==true){
+								return false;
+							}
+						}
+						if(formAction!="unauthupdate"&&configData.unauthmode){
+						 unAuthValidateConfiguration(instance);
+						  if(unauthConfigFlag==true){
+								return false;
+							}
+						}
+					});
+				}
+				if($('#rooms').val()==0 || $('#rooms').val()==null){
+					alert("Please select Space");
+				}else if(listResultData.length != 0 && unauthConfigFlag==true){
+					if(formAction=="unauthupdate"){
+						if(room_modified)
+							$('#same-configuration').foundation('open');
+						else
+							saveGitHubUnAuthInstance();
+					}else{
+						$('#same-configuration').foundation('open');
+					}
+				}else{
+					console.log("no same configuration exist.");
+					saveGitHubUnAuthInstance();
+				}
+			}
+	}
+	function saveGitHubUnAuthInstance(){
+		console.log("saveGitHubUnAuthInstance!!!!!!!!!");
+		$('#same-configuration').foundation('close');
+		$('.loading-second-block').html('Selected Space is '+ selectedRoomName);
+		$('#loading-block').foundation('open');
+		$.ajax({url: action_url+"?userId="+user_id,
+			async:true,
+			type: actionType,
+			data: unAuthJsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){	
+				$('#success-integration').foundation('open');
+				$('#loading-block').foundation('close');					
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					$('#loading-block').foundation('close');
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+		$('.loading-first-block').html('Please wait just a moment while your app is loading');
+		$('.loading-second-block').html('');
+	}
+	function saveGitHubAuthInstance(){
+		console.log("saveGitHubAuthInstance!!!!!!!!!");
+		$('#same-configuration').foundation('close');
+		$('.loading-second-block').html('Selected Space is '+ selectedRoomName);
+		$('#loading-block').foundation('open');
+		$.ajax({url: action_url+"?userId="+user_id,
+			async:true,
+			type: actionType,
+			data: authJsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){	
+				$('#success-integration').foundation('open');
+				$('#loading-block').foundation('close');					
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					$('#loading-block').foundation('close');
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+		$('.loading-first-block').html('Please wait just a moment while your app is loading');
+		$('.loading-second-block').html('');
+	}
+</script>
+</head>
+<body>
+	<div class="integration-app" id="github">
+		<div class="rows large-12 medium-12 columns warning-msg" style="display:none;"></div>
+		<div class="rows large-12 medium-12 columns client-app-warning" style="display:none;"> </div>
+		<div id="loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait just a moment while your app is loading</div>
+				<div class="loading-second-block">name and space name</div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="list-loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait...</div>
+				<div class="loading-second-block"></div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="success-integration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="success-loading">
+				<img class="spark-icon" src="" alt=".....">
+			</div>
+			<div class="well-done-text">Well done!</div>
+			<div class="success-integration-first-block">Your configuration has been set up and is ready to use.</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<div class="success-integration-second-block">
+					<!--<button class="button" id="room-button">Go to
+						Content Testing Space</button>-->
+					<button class="secondary button" id="done-button">Done</button>
+				</div>
+			</div>
+		</div>
+		<div class="reveal" id="remove-integration-popup" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="large-12 columns desktop-block">			    
+				<div class="row">
+					<div class="large-2 medium-2 columns"><img alt="" id="github-icon" src=""/></div>
+					<div class="large-6 medium-6 columns" style="float:left;">
+						<label id="displayName-label"></label>
+						<label id="addedon-label"></label>
+					</div>
+				</div><br>
+				<div class="msg-labels"><label id="remove-msg"></label> <label id="remove-auth"></label></div>				
+				<button class="close-button" data-close aria-label="Close modal" type="button">
+					<span aria-hidden="true">&times;</span>
+				</button><br><br>
+				<button class="button remove-integration-btn" id="remove-integration-btn" style="float:right">Remove</button>
+			</div>
+			<div class="large-12 columns mobile-block">	
+				<div class="msg-labels"><label id="remove-msg-mobile"></label> <label id="remove-auth-mobile"></label></div>				
+				<div class="option-buttons remove-integration-buttons">
+					<label class="remove-popup-cancel"> 
+						<a href="#" id="cancel-remove-integration">cancel</a>
+					</label>
+					<label class="remove-popup-remove">
+						<a href="#" id="remove-integration-btn-mobile" class="remove-integration-btn">remove</a>
+					</label>
+				</div>
+			</div>
+		</div>
+		<div id="same-configuration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="same-config-text">An identical configuration to the same Cisco Spark space you have selected already exists. Are you sure you want to configure one more?</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<button class="secondary button same-config-yes">Yes</button>
+				<button class="secondary button same-config-no">No</button>
+			</div>
+		</div>
+		<div class="github-links">
+			<p  class="auth" style="display:none;">Click <a href="#" class="auth-link">here</a> to add a GitHub.com configuration.</p>
+			<p class="unauth" style="display:none;">Click <a href="#" class="unauth-link">here</a> to add an unauthed mode or GitHub Enterprise configuration.</p>
+		</div>
+		<div class="github-add-config" style="display:none;">
+			<div class="github-add-config-text"><p>Click add to create a GitHub Enterprise configuration.</p></div>
+			<div class="github-add-config-btn"><button class="secondary button" id="add-config">Add</button></div>
+		</div>
+		<div class="github-add-auth" style="display:none;">
+			<div class="auth-text">	<p>Click add to authenticate your GitHub.com account with Cisco Spark, so we can manage the events.</p></div>
+			<div class="github-add-btn"><button class="secondary button github-auth-add" id="add-config">Add</button></div>
+		</div>
+		<p class="unauth-nonauth-link" style="display:none;">If you don't want to authenticate your GitHub.com account or set up for GitHub Enterprise, click <a href="#" class="unauth-link">here.</a> </p>
+		<div class="integrations" id="integrations-block">
+			<div id="instance-loading-block" class="row instance-loading-block" style="display: none;">
+				<div class="instances-loading">&nbsp;</div>
+				<div class="instances-loading-text"></div>
+			</div>
+			<div id="home" class="home">
+				<div class="row add-config-block">
+					<div class="large-12 medium-12 columns">							
+						<div class="large-6 medium-6 columns config-name"><label>GitHub configurations</label></div>
+						<div class="large-6 medium-6 columns">
+							<!--<button class="secondary button" id="add-config">Add</button>-->
+						</div>					
+					</div>
+				</div>
+				<div id="instance-list-block" class="row instance-list-block">						
+				</div>
+			</div>
+		</div>
+		<div class="note-on-permission" style="display:none;">
+			<div class=""><br>
+				<p><span class="" id="add-auth-note-expand-close" title=""> &nbsp;</span><span id="note-permission-config-label"><b>Permissions you will be giving during authentication explained</b></span></p><br>
+			</div>
+			<div id="add-note-permission" style="display:none;">
+				<div class="large-12 columns sub-config-block">
+					<p>While connecting for the first time, Cisco Spark will ask permissions to access your GitHub repositories so we can configure and manage messages received from GitHub. Per the scopes provided by GitHub, the only way we can access all your public and private repositories is using the "repo" scope which ends up giving both read and write privileges to all your public and private repo data.</p><br>
+					<p><b>Note:</b> Although you will be giving write permission to your repo data, Cisco Spark will only use the read permission to get a list of your public and private repositories and use the write permission to configure the webhook on GitHub.</p>
+				</div>
+				<div class="large-12 columns sub-config-block">
+					<p>At anytime you can remove the permissions given to Cisco Spark by following the below steps.</p><br>
+					<div class="large-12 columns sub-config-block">
+						<div class="large-1 medium-1 columns step">
+							<label>Step 1</label>
+						</div>
+						<div class="large-11 medium-11 columns step-text">							
+							<p>Go to your <b>GitHub Settings:</b> <a href="https://github.com/settings" target="_blank">github.com/settings.</a></p>
+						</div>
+					</div>
+					<div class="large-12 columns sub-config-block">
+						<div class="large-1 medium-1 columns step">
+							<label>Step 2</label>
+						</div>
+						<div class="large-11 medium-11 columns step-text">							
+							<p>Go to <b>Authorized applications</b>, click <b>Revoke</b> next to <b>Cisco Spark</b>.</p>
+						</div>
+					</div>
+					<div class="large-12 columns sub-config-block">
+						<div class="large-1 medium-1 columns step">
+							<label>Step 3</label>
+						</div>
+						<div class="large-11 medium-11 columns step-text">							
+							<p>Click <b>I understand, revoke access.</b></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="large-12 columns" id="integration-form">
+			<div class="github-instructions" style="display:none;">
+				<div class="large-12 medium-12 columns">
+					<p>	<span class="" id="expand-close" title=""> &nbsp;</span><span><b class="github-note">Additional Instructions</b></span></p><br>
+				</div>
+				<div id="github-showSetup" style="display:none;">
+					<div class="large-12 medium-12 columns">
+						<p><span class="" id="add-org-expand-close" title=""> &nbsp;</span><span id="add-org-config-label"><b>Add a new GitHub organization to Cisco Spark anytime</b></span>	</p><br>
+					</div>
+					<div id="add-github-org" style="display:none;">
+						<div class="large-12 columns sub-config-block">
+							<p>Anytime you join a new organization in GitHub, you need to provide access privileges to Cisco Spark if you want to receive the notifications for that organization as well.</p><br>
+							<h6>Follow below steps to grant access to a new organization.</h6>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label>Step 1</label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">							
+								<p>Go to your <b>GitHub Settings:</b> <a href="https://github.com/settings" target="_blank">github.com/settings.</a></p>
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label>Step 2</label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">							
+								<p>Go to <b>Authorized applications</b>, click Cisco Spark.</p>
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label>Step 3</label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">							
+								<p>Under Organization Access, click Grant Access next to your new organization.</p>
+							</div>
+						</div><br>
+					</div>
+					<div class="large-12 medium-12 columns">
+						<p><span class="" id="note-permission-expand-close" title=""> &nbsp;</span><span id="note-permission-config-label"><b>Permissions explained</b></span></p><br>
+					</div>
+					<div id="note-about-permission" style="display:none;">
+						<div class="large-12 columns sub-config-block">
+							<p>The permissions given to Cisco Spark are read and write access to all the public and private repository data, read and write user data, full access to repository webhooks and services (no direct code access) and full access to organization webhooks (no direct access). Click <a href="https://help.github.com/articles/connecting-with-third-party-applications/" target="_blank">here</a> for more details.</p>
+							<br>
+							<p><b>Note:</b> Although you have given write permission to your repo data, Cisco Spark will only use the read permission to get a list of all your public and private repositories and use the write permission to configure the webhook on GitHub.</p>
+						</div>
+						<div class="large-12 github revoke permission sub-config-block">
+							<p>At anytime you can remove the permissions given to Cisco Spark by following the below steps.</p><br>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label>Step 1</label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">							
+									<p>Go to your <b>GitHub Settings:</b> <a href="https://github.com/settings" target="_blank">github.com/settings.</a></p>
+								</div>
+							</div>
+							<div class="large-12 columns sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label>Step 2</label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">							
+									<p>Go to <b>Authorized applications</b>, click <b>Revoke</b> next to <b>Cisco Spark</b>.</p>
+								</div>
+							</div>
+							<div class="large-12 github revoke lastchild sub-config-block">
+								<div class="large-1 medium-1 columns step">
+									<label>Step 3</label>
+								</div>
+								<div class="large-11 medium-11 columns step-text">							
+									<p>Click <b>I understand, revoke access.</b></p>
+								</div>
+							</div><br><br><br><br>
+						</div>
+					</div>
+					<div class="large-12 medium-12 columns">
+						<p><span class="" id="switch-unauth-expand-close" title=""> &nbsp;</span><span id="switch-unauth-config-label"><b>Switch to unauthed mode</b></span></p><br>
+					</div>
+					<div id="switch-unauth-mode" style="display:none;">
+						<div class="large-12 switch-unauth sub-config-block">
+							<p>If needed, at anytime click <a href="#" class="unauth-link"> here</a> to set up an unauthed mode or GitHub Enterprise configuration.</p>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="large-12 medium-12 columns edit-itemconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured repository does not exist.</span></p>
+			</div>
+			<div class="large-12 medium-12 columns edit-roomconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured space does not exist.</span></p>
+			</div>
+			<div class="authenticted-block">Authenticated to GitHub as: <span id="authenticted-to"></span></div>
+			<div class="no-configuration-block" style="display:none">There are no repositories available in your GitHub Account. Please create repostories in your account and configure.<br></div>
+			<form name="form" id="form" method="post">
+				<div class="row app-config-block github-auth">
+					<div class="large-12 columns first sub-config-block">
+						<h3 class="heading-01">GitHub configuration</h3>						
+						<div class="large-10 medium-10 columns items-config" style="float:left;">
+							<div class="large-3 medium-3 columns"><label class="label-config">GitHub Repository</label></div>						
+							<div class="large-6 medium-6 columns dropdown-config text left">
+								<select name="repositories"  id="repos" class="dropdown"><option value="0" hidden>Select</option></select><span class="has-tip tip-right" id="tooltip" title="Repository, for which you'd receive notifications"
+								data-tooltip><img class="tool-tip"></span>
+								<div class="settings-loading" style="display: none;"></div>	
+							</div>	
+						</div>						
+					</div>
+					<div class="large-12 columns events-config">
+						<div class="large-12 medium-12 columns events">
+							<label>Events</label>
+							<div id="events" class="events-sub">
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="branch_tag_created" name="events" value="create"/><label for="branch_tag_created">Branch or Tag created</label></div>
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="branch_tag_deleted" name="events" value="delete"/><label for="branch_tag_deleted">Branch or Tag deleted</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="pull_request" name="events" value="pull_request"/><label for="pull_request">Pull requests</label></div>	
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="commit_comments" name="events" value="commit_comment"/><label for="commit_comments">Commit comments</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="pull_request_comment" name="events" value="pull_request_review_comment"/><label for="pull_request_comment">Pull request comments</label></div>
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="deployment" name="events" value="deployment"/><label for="deployment">Deployment</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="push" name="events" value="push"/><label for="push">Pushes</label></div>	
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="deployment_status" name="events" value="deployment_status"/><label for="deployment_status">Deployment status</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="release" name="events" value="release"/><label for="release">Releases</label></div>
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="fork" name="events" value="fork"/><label for="fork">Forks</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="stars" name="events" value="watch"/><label for="stars">Stars</label></div>	
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="issue" name="events" value="issues"/><label for="issue">Issues</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="status" name="events" value="status"/><label for="status">Status</label></div>
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="issue_comment" name="events" value="issue_comment"/><label for="issue_comment">Issue comments</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="team_add" name="events" value="team_add"/><label for="team_add">Team adds</label></div>	
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" id="member" name="events" value="member"/><label for="member">Members</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-4 medium-4 columns checkbox"><input type="checkbox" id="wiki_page" name="events" value="gollum"/><label for="wiki_page">Wiki pages</label></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row app-config-block github-unauth" style="display:none;">
+					<div class="large-12 medium-12 columns"><label class="heading-01">Unauthed mode/GitHub Enterprise configuration</label></div>
+					<div class="large-12 medium-12 columns">
+						<p>	<span class="" id="expand-close-config" title=""> &nbsp;</span><span id="config-label">Please follow the below steps to add this configuration. You can add/edit/delete multiple configurations at anytime.</span></p>
+					</div>
+					<div id="showConfig">
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label>Step 1</label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">							
+								<p>Login into your GitHub account as admin. Click on the repository under <strong>Your repositories</strong> in the right side as shown.</p>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/github/gescreen1.png" >					
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label>Step 2</label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">							
+								<p>Click on the <strong>Settings</strong> tab as shown.</p><br>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/github/gescreen2.png" >
+							</div>
+						</div>	
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label>Step 3</label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">							
+								<p>In the left side pannel, click <b>Hooks & services</b> tab and click on <b>Add webhook</b> as shown.</p><br>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/github/gescreen3.png" >
+							</div>
+						</div>
+						<div class="large-12 columns sub-config-block">
+							<div class="large-1 medium-1 columns step">
+								<label>Step 4</label>
+							</div>
+							<div class="large-11 medium-11 columns step-text">							
+								<div class="large-9 columns">
+									<div class="large-2 medium-2 columns">
+											<label class="label-config">Webhook URL</label>
+									</div>
+									<div class="large-9 medium-10 columns">
+										<input type="text" id="webhookURL" readonly="" name="webhookURL">	
+										<a href="javascript:void(0)" id="copy">Copy URL</a>	<br>
+									</div>
+								</div><br><br>
+								<p>Copy the above Webhook URL and paste into <b>Payload URL</b> textbox. Select application/json value for <b>Content type</b> dropdown. Select any one value for <b>Which events would you like to trigger this webhook?</b> and check <b>Active</b> checkbox then click <b>Add webhook</b></p><br>
+								<img alt="" src="https://183.82.99.100:8443/CiscoWebcontent/images/github/gescreen4.png" >
+							</div>
+						</div>
+					</div>
+				</div>	
+				<div class="row spark-config-block">
+					<div class="large-10 medium-10 columns">
+						<h3 class="heading-01">Cisco Spark configuration</h3>
+						<div class="large-8 columns sub-config-block">
+							<div class="large-2 medium-3 columns small-mobile">
+								<label>Space</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<select name="room" id="rooms" class="custom-select">
+								<option value='0'>Please Select</option></select><span class="has-tip tip-right" id="tooltip" title="Space in which you'd like to receive notifications. Ensure newly created spaces have at least one message in it for it to show up here."
+									data-tooltip><img class="tool-tip"></span>
+							</div>
+							<div class="rooms-loading" style="display: none;"></div>
+						</div>
+						<div class="large-8 columns sub-config-block left">
+							<div class="large-2 medium-3 columns small-mobile config-optional">
+								<label>Configuration name (optional)</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<input type="text" name="displayName" id="displayName" class="integration-name"	value="">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row integration-config-block">
+					<div class="large-5 medium-5 columns" >&nbsp;</div>
+					<div class="large-4 medium-4 columns left" >
+						<button class="button" id="cancel-button">Cancel</button>
+						<button class="button secondary text" id="submit-button">Add Integration</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</body>
+</html>

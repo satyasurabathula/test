@@ -1,0 +1,1036 @@
+<!DOCTYPE html> 
+<html>
+<head> 
+<meta charset="UTF-8">
+<title>Trello integration to Cisco Spark</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.css" rel="stylesheet" type="text/css"> 
+<link href="https://d24wgzqqegxpap.cloudfront.net/api/css/collab-ui-min.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/styles.css" rel="stylesheet" type="text/css"> 
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/select2.min.css" rel="stylesheet" /> 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.js"></script> 
+<script type="text/javascript" src="https://d24wgzqqegxpap.cloudfront.net/api/js/porthole.min.js"></script>
+<script type="text/javascript" src="https://183.82.99.100:8443/CiscoWebcontent/js/scriptsRoom.js"></script>
+<script src="https://183.82.99.100:8443/CiscoWebcontent/js/select2.min.js"></script>
+<script>
+	integration_app_icon_url="https://d24wgzqqegxpap.cloudfront.net/api/images/trello/trello.png";
+	clientAppRevokeMsg = '<p class="integrationAuthMsg"><span class="info-icon" title=""> &nbsp;</span><span>We are facing difficulty while accessing your Trello account. Please click on Add to authorize.</span></p>';
+	var integration_token="";
+	var selected_board_id="0";
+	var board_modified=false;
+	var list_modified=false;
+	var board_id_old="";
+	var list_id_old="";
+	var application_id="2";
+	var token="";
+	var instanceUuid="";
+	var room_id = "";
+    var selectedBoardId = "";
+	var matchFlag = true;
+	var configFlag = false;
+	var listFlag=false;
+	var listId = "";
+	var selected_listId= "0";
+	var listSuccess = false;
+	var jsonStringEdit = "";
+	var saveJsonString = "";
+	var selectedRoomName = "";
+	var action_url = "";
+	var actionType = "";
+	appName = "Trello";
+	postMessageToSpark = "Trello "+postMessageToSpark;
+	updateMessageToSpark= "Trello "+updateMessageToSpark;
+	removeMessageToSpark= "Trello "+removeMessageToSpark;
+	$( document ).ready(function() {
+		application_auth_details_url="/api/applications/"+application_id;
+		save_spark_token_url="/api/clients/tokens";
+		save_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		get_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		configuration_settings_url="/api/integrations/"+integration_id+"/uiSettings";
+		save_configuration_settings_url="/api/integrations/instances";
+		update_configuration_settings_url="/api/integrations/instances/";
+		delete_instance_url="/api/integrations/instances/";
+		list_integration_instances_url="/api/integrations/instances";		
+		removeall_integration_instances_url="/api/integrations/instances";	
+		delete_spark_token_url="/api/clients/tokens";
+		delete_integration_token_url="/api/integrations/"+integration_id+"/appTokens";
+		action=action.toLowerCase();
+		if(action=="connect") {			
+			$("#integrations-block").hide();
+			$("#integration-form").hide();
+			validateIntegrationAppToken();
+		} else if(action=="disconnect") {
+			formAction="disconnect";			
+			removeAllIntegrationInstances(formAction);
+		}else {
+			var app_token="";
+			console.log("window.top.location.hash "+window.top.location.hash);
+			if(window.top.location.hash) {
+				app_token = window.top.location.hash.substring(7);
+			}
+			console.log("Code before call"+app_token);
+			if(app_token!="") {
+					var jsonObject={};
+					jsonObject["applicationId"] = application_id;
+					jsonObject["integrationId"] = integration_id;
+					jsonObject["accessToken"] = app_token;
+					jsonObject["expires"] = "3600";
+					var jsonString=JSON.stringify(jsonObject);
+					validateIntegrationAppTokenInList(jsonString,app_token);
+				console.log("code..." + app_token);
+			} else {
+				validateIntegrationAppTokenDB();
+			}
+		}
+		$("#rooms").select2();
+		$("#trello-icon").attr("src", integration_app_icon_url);
+		$(".spark-icon").attr("src", spark_icon_url);
+
+		$("#trello #submit-button").click(function (e){
+			e.preventDefault();
+			saveTrelloInstance();			
+		});
+		$("#trello #cancel-button").click(function (e){
+				e.preventDefault();			
+				$('#integration-form').hide();
+				$('#integrations-block').show();
+				listIntegrations();
+				resize();
+		});
+		$('#trello #add-config').click(function(e){
+				e.preventDefault();	
+				formAction="add";
+				$("#board-lists").hide();
+				/*	if(listResultData.length != 0){
+				$("#submit-button").text("Add");
+					resetForm();
+					loadTrelloForm();
+					loadRooms();
+				}
+				else{
+					$("#submit-button").text("Add Integration");				
+					validateIntegrationAppToken();				
+				} */
+			if(listResultData.length != 0){
+				console.log("listresult  "+listResultData.length);
+				$("#submit-button").text("Add");
+				console.log("isClientAppTokenValid in add-config : "+isClientAppTokenValid);
+				if(isClientAppTokenValid){
+					resetForm();
+					loadTrelloForm();
+					loadRooms();
+					//$('.client-app-warning').html('');
+				}else{
+					setTrelloAppAuthDetails(integration_id);
+				}
+			}else{
+				console.log("listresilt is not there +++ = isClientAppTokenValid "+isClientAppTokenValid);
+				$("#submit-button").text("Add Integration");				
+				validateIntegrationAppToken();				
+			}
+		});
+		$('#cancel-remove-integration').click(function(e){
+			e.preventDefault();
+			$('#remove-integration-popup').foundation('close');
+		});
+		$("#trello #boards").on('change',function(){
+			if($('#boards').val()!=0&&formAction=="update")
+				$(".edit-itemconfig-info").hide();
+				$(".edit-itemconfig1-info").hide();
+		});
+		$("#trello #lists").on('change',function(){
+			if($('#lists').val()!=0&&formAction=="update")
+				$(".edit-itemconfig1-info").hide();
+		});	
+		$("#trello #rooms").on('change',function(){
+			if($('#rooms').val()!=0&&formAction=="update")
+				$(".edit-roomconfig-info").hide();
+		});	
+		$(document).on("click", ".same-config-yes" , function(e) {
+			console.log("yes clicked!!!!!!!!!!!!!");
+			saveTrelloInstanceConfig();
+		});
+		$(document).on("click", ".same-config-no" , function(e) {
+			console.log("no clicked!!!!!!!!!!!!!");
+			$('#same-configuration').foundation('close');
+		});
+		$(document).on("click", "#trello #instance-list-block .edit-config" , function() {
+			formAction="update";
+			$('#lists option[value!="0"]').remove();
+			board_modified=false;
+			room_modified=false;
+			list_modified=false;
+			$("#submit-button").text("Save");
+			instanceId=this.id;
+			$.each(listResultData,function(index,value){
+				if(value["instanceId"]==instanceId) {
+					instanceData=value;
+				}
+			});
+			selected_room_id=instanceData.channelId;
+			var config=JSON.parse(instanceData.configJson);
+			selected_board_id=config.board_id;
+			selected_listId = config.list_id;
+			console.log("selected_listId..." + selected_listId);
+			var jsonObject1={};
+			jsonObject1["integrationId"] = integration_id;
+			jsonObject1["userId"] = user_id;
+			jsonObject1["boardId"] = config.board_id;
+			jsonObject1["responseType"]= 'lists';
+			jsonStringEdit=JSON.stringify(jsonObject1);
+			loadTrelloForm();
+			instanceUuid = instanceData.instanceUuid;
+			$('#displayName').val(config.displayName);
+			board_id_old = config.board_id;
+			list_id_old = config.list_id;
+			room_id_old = instanceData.channelId;
+			var notifications=config.notifications;
+			if($.isArray(notifications)) {
+				$.each(notifications,function(index,value){
+					$("input[type=checkbox][value="+value+"][name=subnotifications]").prop("checked",true);
+				});
+			} else {
+				$("input[type=checkbox][value="+notifications+"][name=subnotifications]").prop("checked",true);
+			}			
+		});	
+		$("#boards").change(function () {
+			if($("#boards").val() != '0'){ 
+				var jsonObject={};
+				jsonObject["integrationId"] = integration_id;
+				jsonObject["userId"] = user_id;
+				jsonObject["boardId"] = $("#boards").val();
+				jsonObject["responseType"]= 'lists';
+				jsonString=JSON.stringify(jsonObject);
+				resetForm();
+				getListsUnderBoard(jsonString);
+			}
+			resize();
+		});
+    });
+	function resetForm(){
+		$('#lists option[value!="0"]').remove();	
+		$("#board-lists").hide();
+	}
+	function getListsUnderBoard(jsonString){
+		listFlag=false;
+		var boardList = [];
+			$.ajax({url: configuration_settings_url+"?userId="+user_id,
+					async:true,
+					type: "POST",
+					data: jsonString,
+					contentType: "application/json",
+					dataType: "json",
+					success: function(result){
+						listSuccess = true;
+						var listresponse = result["postSpecificIntegrationSettings"]["listResponse"]; 
+						if(listresponse.length != 0){
+							$.each(listresponse, function(id,obj){ 
+								$("#lists").append($('<option>').text(obj.name).attr('value',obj.id));
+								if(formAction=="update" && selected_listId==obj.id && listFlag==false){
+									console.log("obj.id..." + obj.id);
+									selected_listId=obj.id;
+									listFlag=true;
+									console.log("list match.." + selected_listId);
+								}
+							});	
+							$("#board-lists").show();
+						}else{
+							$("#board-lists").hide();
+						}
+						if(formAction=="update"&& listFlag==false&&selected_listId!=false){
+							selected_listId = "0";
+							$(".edit-itemconfig1-info").show();
+							console.log("selected_listId.." + selected_listId);
+						   } else if(formAction=="update"&&listFlag==false&&selected_listId==false){
+								selected_listId = "0";
+								$(".edit-itemconfig1-info").hide();
+								console.log("selected_listId.." + selected_listId);
+						}
+						$("#lists").val(selected_listId);
+						selected_listId="0";
+						resize();
+					},
+					error: function(xmlHttpRequest,error) {
+					   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+						   return;
+					   } else{
+							$("#board-lists").hide();
+							alert("We've experienced some difficulty. Try again.");
+						}
+					}
+				});
+		}
+	function validateIntegrationAppToken() {
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					//loadTrelloForm();
+					validateIntegrationAppspecificToken();
+				} else {
+					setTrelloAppAuthDetails(integration_id);
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   }else{
+						alert("We've experienced some difficulty. Try again.");
+					}
+			}
+		});
+	}
+	function validateIntegrationAppspecificToken(){
+		$.ajax({
+			url: configuration_settings_url+"?userId="+user_id,
+			async: true,
+			success: function(result){
+					if(result["integrationSpecificSettings"]["isValidToken"]==false && result["integrationSpecificSettings"]["isValidToken"] != undefined){
+						isClientAppTokenValid = false;
+						console.log("***** validateIntegrationsApp token  with validateClientToken *********");
+						//$('.client-app-warning').html(clientAppRevokeMsg);
+						//$('#integrations-block').show();
+						//$('.client-app-warning').show();
+						//setIntegrationAppAuthDetails(integration_id);
+						if(listResultData.length==0){
+							setTrelloAppAuthDetails(integration_id);
+						}
+					}else{
+						loadTrelloForm();
+					}
+				},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+				   alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function generateIntegrationAppToken(app_code) {
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					listIntegrations();
+				} else {
+					//getIntegrationAppTokenDetails(app_code); 
+					setTrelloAppAuthDetails(integration_id);
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function getAuthUser(){
+		if(ui_settings["integrationSpecificSettings"]["userResponse"] != undefined && ui_settings["integrationSpecificSettings"]["userResponse"] != null)
+			authenticated_user=ui_settings["integrationSpecificSettings"]["userResponse"].email;
+	}
+	function setTrelloAppAuthDetails(int_id) {
+		$.ajax({url: application_auth_details_url,
+			async:true,
+			success: function(result){
+				loginWithAuthDetails(result);	
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});		
+	}
+    function loginWithAuthDetails(result) {
+		var KEY = result.clientId;
+		var authorizationEndpoint = result.authorizationEndpoint;
+		var RETURN_URL='https://183.82.99.100:444/CiscoWebcontent/dev/trello.html';
+		var oauthURL= authorizationEndpoint+'?callback_method=fragment&return_url='+RETURN_URL+'&scope=read,write,account&expiration=never&name=Cisco Spark'+'&key='+KEY;
+		isRedirect=true;
+		if(isRedirect) {
+			if(formAction=="add") {
+				window.top.location.href = oauthURL;
+			} else {
+				var authReqMsg ="";
+				authReqMsg+='<hr class="instance-hr"><div class="large-12 medium-12 columns instance-background">';
+				authReqMsg+='<div class="no-config-msg">You are not authorized to this integration. Click Add to continue.</div></div>';
+				$('#integrations-block').show();
+				$("#instance-list-block").html(authReqMsg);
+			}			
+		}else{
+			var win = window.open("https://trello.com/", "windowname1", 'width=0, height=0');
+			if(win){ 
+				win.close();
+			}else{
+				alert(popblockedMessage); 
+				return false;
+			}
+			$.getScript("https://trello.com/1/client.js?key="+key ,function(){
+				Trello.authorize({
+					name: "Cisco Spark",
+					type: "popup",
+					interactive: true,
+					expiration: "never",
+					persist: false,
+					success: function () {
+						token = Trello.token();
+						var jsonObject={};
+						jsonObject["applicationId"] = application_id;
+						jsonObject["integrationId"] = integration_id;
+						jsonObject["accessToken"] = token;
+						jsonObject["expires"] = "3600";
+						var jsonString=JSON.stringify(jsonObject);
+						saveIntegrationAppToken(jsonString);
+					},
+					scope: {  write: true, read: true ,account : true},
+				});
+			});
+		} 
+	}
+	function validateIntegrationAppTokenInList(jsonData,app_code) {
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					//listIntegrations();
+					validateSpecificAppToken(jsonData,app_code);
+				} else {
+					saveIntegrationAppToken(jsonData); 
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function validateSpecificAppToken(jsonData,app_code){
+		$.ajax({
+			url: configuration_settings_url+"?userId="+user_id,
+			async: true,
+			success: function(result){
+					if(result["integrationSpecificSettings"]["isValidToken"] != undefined && result["integrationSpecificSettings"]["isValidToken"]==false ){
+						isClientAppTokenValid = false;
+						if(app_code!="") saveIntegrationAppToken(jsonData); 
+						else setTrelloAppAuthDetails(integration_id);						
+						console.log("isClientAppTokenValid ***** "+isClientAppTokenValid);
+					}else{
+						isClientAppTokenValid = true;
+						listIntegrations();
+					}
+				},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+				   alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function getListInstances(){
+		$.ajax({url: list_integration_instances_url+"?userId="+user_id+"&integrationId="+integration_id,
+			async:true,
+			success: function(result){
+			 instanceList = result;
+			if(instanceList.length != 0 && instanceList.message == undefined){
+				 console.log("instanceList in getListInstances()"+instanceList.length);
+				 listIntegrations();
+			 }else{
+				 loadTrelloForm(); 
+			 } 
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }
+			}
+		});
+	}
+	function saveIntegrationAppToken(jsonData){
+		$.ajax({url: save_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "POST",
+			data: jsonData,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){
+				connectIntegration();
+				console.log("isClientAppTokenValid in saveToken *** "+isClientAppTokenValid);
+				if(isClientAppTokenValid == false) getListInstances();
+				else loadTrelloForm(); 
+				
+			},
+			error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   }else{
+						alert("We've experienced some difficulty. Try again.");
+					}
+			}
+		});	
+	}
+	function loadTrelloForm(){
+		$("#form").trigger("reset");
+		$('#integrations-block').hide();
+		$("#integration-form").show();
+		$(".edit-roomconfig-info").hide();
+		$(".edit-itemconfig-info").hide();
+		$(".edit-itemconfig1-info").hide();
+		$(".rooms-loading").show();
+		resize();
+		if(ui_settings=="") {	
+			$(".settings-loading").show();
+			$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					$(".settings-loading").hide();
+					ui_settings=result;	
+					loadConfigurationSettings();
+					loadRooms();
+				},
+				 error: function(xmlHttpRequest,error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   }else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+			getAllSparkRooms();
+		}else{
+			loadConfigurationSettings();
+		}
+	}
+	function loadConfigurationSettings(){
+		if(ui_settings["sparkRoomSettings"] && ui_settings["integrationSpecificSettings"]) {
+			var itemFlag=false;
+			var roomFlag=false;
+			var rooms ="";
+			var boards = ui_settings["integrationSpecificSettings"]["userResponse"]["boards"];
+			var authorizedto=ui_settings["integrationSpecificSettings"]["userResponse"].email;
+			if(authorizedto!="" && authorizedto!=undefined) {
+				$('#authenticted-to').html(authorizedto);
+				$("input#authenticatedto").val(authorizedto);
+				$(".authenticted-block").css("display","block");
+			} 
+			if(formAction=="update"){ 
+			console.log("***** "+jsonStringEdit);
+			getListsUnderBoard(jsonStringEdit);}
+			$('#boards')[0].options.length =1;
+			var isboardExists=false;
+			$.each(boards, function(id,obj){
+				isboardExists=true;
+				$("#boards").append($('<option>').text(obj.name).attr('value',obj.id));
+				if(formAction=="update" && selected_board_id==obj.id && itemFlag==false){
+					selected_board_id=obj.id;
+					itemFlag=true;
+				}
+			});
+			if(formAction=="update" && itemFlag==false){
+				selected_board_id = "0"; 
+				$(".edit-itemconfig-info").show();
+				$(".edit-itemconfig1-info").hide();
+				$("#board-lists").hide();
+			}
+			$('#rooms')[0].options.length = 1;
+			rooms = ui_settings["sparkRoomSettings"].items;
+			if(allRooms.length !=0) {
+				rooms = allRooms;
+				$(".rooms-loading").hide();
+			}
+			//if(!isMobile) $("#rooms").customselect("destroy");
+			$.each(rooms, function(id,obj){
+				$("#rooms").append($('<option>').text(obj.title).attr('value',obj.id));
+				if(formAction=="update" && selected_room_id==obj.id && roomFlag==false){
+					selected_room_id=obj.id;
+					roomFlag=true;
+				}
+			}); 
+			if(formAction=="update" && roomFlag==false){
+				selected_room_id = "0";
+				$(".edit-roomconfig-info").show();
+			}			
+			$("#rooms").val(selected_room_id);
+			$("#boards").val(selected_board_id);
+			console.log("after setting selected_listId..." + selected_listId);
+			$('#select2-rooms-container').html($("#rooms option:selected").text());
+			selected_room_id="0";
+			selected_board_id="0";
+			if(isboardExists) {
+			} else {
+				$('.no-configuration-block').show();
+				$('#form').hide();
+			}
+			//if(!isMobile) $("#rooms").customselect();
+		}else{
+			alert("We've experienced some difficulty. Try again.");
+		}
+	}
+	function validateConfiguration(instance, notifications){
+	    console.log("validating Configuration....");
+		var configData = JSON.parse(instance.configJson);
+		var configEvents = configData.notifications;
+		var notificationsLength = notifications.length;
+		var matchCount = 0;
+		configFlag = false;
+		matchFlag = true;
+		console.log("listId..." + listId);
+		if(instance.channelId==room_id&&configData.board_id==selectedBoardId&&configData.list_id==listId){
+			configFlag = true;
+		}
+		if($.isArray(notifications)){
+			console.log("configEvents..." + configEvents +"length...." + configEvents.length);
+			if($.isArray(configEvents)){
+				for (var p in notifications) {
+					if(configEvents[p] != notifications[p]){
+						matchFlag = false;
+						console.log("Match: " + configEvents[p] + "!=" + notifications[p]);
+					}else {
+						matchCount = matchCount +1;
+					   console.log("Match: " + configEvents[p] + "==" + notifications[p]);
+					}
+					console.log("match count..." + matchCount + "configEvents.length..." + configEvents.length);
+					if(matchCount==configEvents.length&&notificationsLength==configEvents.length){
+						matchFlag = true;
+						return false;
+					}else{
+						matchFlag = false;
+					}
+				}
+			}else{
+			    console.log("not matched...configEvents");
+				matchFlag = false;
+			}
+		}else{
+			if($.isArray(configEvents)){
+			    matchFlag = false;
+				console.log("not matched...array" + matchFlag);
+			}else{
+			  if(configEvents==notifications){
+				matchFlag = true;
+				 console.log("matched single.." + matchFlag);
+			  }else{
+				matchFlag = false;
+			  }
+			}
+		}
+	}
+	function saveTrelloInstance() {
+		var res = $('form').serializeObject();
+		selectedRoomName=$("#rooms option:selected").text();
+	    selectedBoardId=$("#boards option:selected").val();
+	    room_id = $("#rooms option:selected").val();
+		var list_id = $("#lists").val();
+		console.log("listId...." + listId);
+		var jsonData = {};			
+		jsonData["channelId"] = room_id;									
+		jsonData["integrationId"] = integration_id;
+		jsonData["status"] = "ACTIVE";
+		jsonData["userId"] = user_id;
+		jsonData["messageFormat"]="Trello Bot :"+"Hello...User";
+		postAddMessageToRoom(room_id,appName);
+		if(formAction=="update") {
+			jsonData["instance_id"] = instanceId;
+			jsonData["room_id_old"] = room_id_old;
+			if(room_id!=room_id_old) {
+				room_modified=true;
+				jsonData["messageToSpark"] = updateMessageToSpark;
+			} else {
+				room_modified=false;
+			}
+			if(board_id_old!=selectedBoardId) {
+				board_modified=true;
+			} else {
+				board_modified=false;
+			}
+			if(list_id_old!=list_id) {
+				list_modified=true;
+			} else {
+				list_modified=false;
+			}
+			jsonData["repo_modified"] = board_modified;
+			jsonData["room_modified"] = room_modified;
+			jsonData["instanceUuid"] = instanceUuid;
+			jsonData["configJson"]=JSON.parse(instanceData.configJson);
+			action_url=update_configuration_settings_url+instanceId;
+			actionType="PUT";
+			$('.loading-first-block').html('Please wait while your Integration is being updated');
+		} else {
+			jsonData["configJson"]={};
+			jsonData["messageToSpark"] = postMessageToSpark;
+			action_url=save_configuration_settings_url;
+			actionType="POST";
+			$('.loading-first-block').html('Please wait while your Integration is being set up');
+		}
+		jsonData["configJson"]["board_id"] = selectedBoardId;
+		
+		jsonData["configJson"]["displayName"]= res.displayName;
+		if($("#lists").val() == 0){
+			listId = false;
+			jsonData["configJson"]["list_id"] = false;
+		}else{
+			listId = $("#lists").val();
+			jsonData["configJson"]["list_id"] = $("#lists").val();
+		}
+		
+		jsonData["configJson"]["notifications"]={};	
+		jsonData["configJson"]["notifications"] = res.subnotifications;	
+		saveJsonString = JSON.stringify(jsonData);
+		var notificationslength = objLength(res.subnotifications);
+		var notifications = res.subnotifications;
+		if(listResultData.length != 0 && notificationslength !=0){
+			$.each(listResultData, function(i, instance) {
+				if(formAction=="update"&&instance.instanceId!=instanceId){
+				 validateConfiguration(instance, notifications);
+				 if(matchFlag==true&&configFlag==true){
+					 console.log("matchFlag in cond.." + matchFlag + " config Flag.." + configFlag);
+						return false;
+					}
+				}
+				if(formAction!="update"){
+				 validateConfiguration(instance, notifications);
+				  if(matchFlag==true&&configFlag==true){
+					 console.log("matchFlag in cond.." + matchFlag + " config Flag.." + configFlag);
+						return false;
+					}
+				}
+			});
+		}
+		console.log("matchFlag.." + matchFlag + "...configFlag" + configFlag);
+		if($('#boards').val()==0){ 
+		    alert("Please select Board");
+		}else if(notificationslength==0) {
+			alert("Please select atleast one Event");
+		}else if($('#rooms').val()==0 || $('#rooms').val()==null){ 
+		    alert("Please select Space");
+		} else if(listResultData.length != 0 && matchFlag==true && configFlag==true){
+			if(formAction=="update"){
+				$.each(listResultData, function(i, instance) {
+					if(formAction=="update"&&instance.instanceId==instanceId){
+					 validateConfiguration(instance, notifications);
+					}
+				});
+				if(room_modified || board_modified || list_modified || !matchFlag)
+					$('#same-configuration').foundation('open');
+				else
+					saveTrelloInstanceConfig();
+			}else{
+				$('#same-configuration').foundation('open');
+			}
+		}else{
+			saveTrelloInstanceConfig();
+		}
+	}
+	function saveTrelloInstanceConfig(){
+		console.log("saveTrelloInstanceConfig!!!!!!!!!");
+		$('#same-configuration').foundation('close');
+		$('.loading-second-block').html('Selected Space is '+ selectedRoomName);
+		$('#loading-block').foundation('open');
+		$.ajax({url: action_url+"?userId="+user_id,
+			async:true,
+			type: actionType,
+			data: saveJsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){	
+				$('#success-integration').foundation('open');
+				$('#loading-block').foundation('close');					
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					$('#loading-block').foundation('close');
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+		$('.loading-first-block').html('Please wait just a moment while your app is loading');
+		$('.loading-second-block').html('');
+	}
+
+</script>
+</head>
+<body>
+    <div class="integration-app" id="trello">
+		<div class="rows large-12 medium-12 columns warning-msg" style="display:none;"></div>
+		<div class="rows large-12 medium-12 columns client-app-warning" style="display:none;"></div>
+		<div id="loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait just a moment while your app is loading</div>
+				<div class="loading-second-block">name and space name</div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="list-loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait...</div>
+				<div class="loading-second-block"></div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="success-integration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="success-loading">
+				<img class="spark-icon" src="" alt=".....">
+			</div>
+			<div class="well-done-text">Well done!</div>
+			<div class="success-integration-first-block">Your configuration has been set up and is ready to use.</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<div class="success-integration-second-block">
+					<!--<button class="button" id="room-button">Go to
+						Content Testing Space</button>-->
+					<button class="secondary button" id="done-button">Done</button>
+				</div>
+			</div>
+		</div>
+		<div class="reveal" id="remove-integration-popup" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="large-12 columns desktop-block">			    
+				<div class="row">
+					<div class="large-2 medium-2 columns"><img alt="" id="trello-icon" src=""/></div>
+					<div class="large-6 medium-6 columns" style="float:left;">
+						<label id="displayName-label"></label>
+						<label id="addedon-label"></label>
+					</div>
+				</div><br>
+				<div class="msg-labels">
+					<label id="remove-msg"></label> 
+					<label id="remove-auth"></label>
+				</div>			
+				<button class="close-button" data-close aria-label="Close modal" type="button">
+					<span aria-hidden="true">&times;</span>
+				</button><br><br>
+				<button id="remove-integration-btn" class="button remove-integration-btn" style="float:right">Remove</button>
+			</div>
+			<div class="large-12 columns mobile-block">	
+				<div class="msg-labels"><label id="remove-msg-mobile"></label> <label id="remove-auth-mobile"></label></div>				
+				<div class="option-buttons remove-integration-buttons">
+					<label class="remove-popup-cancel"> 
+						<a href="#" id="cancel-remove-integration">cancel</a>
+					</label>
+					<label class="remove-popup-remove">
+						<a href="#" id="remove-integration-btn-mobile" class="remove-integration-btn">remove</a>
+					</label>
+				</div>
+			</div>
+		</div>
+		<div id="same-configuration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="same-config-text">An identical configuration to the same Cisco Spark space you have selected already exists. Are you sure you want to configure one more?</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<button class="secondary button same-config-yes">Yes</button>
+				<button class="secondary button same-config-no">No</button>
+			</div>
+		</div>
+		<div class="integrations" id="integrations-block">
+			<div id="instance-loading-block" class="row instance-loading-block" style="display: none;">
+				<div class="instances-loading">&nbsp;</div>
+				<div class="instances-loading-text"></div>
+			</div>
+			<div id="home" class="home">
+				<div class="row add-config-block">
+					<div class="large-12 medium-12 columns">							
+						<div class="large-6 medium-6 columns config-name"><label>Trello configurations</label></div>
+						<div class="large-6 medium-6 columns">
+							<button class="button" data-open="remove-integration-popup" id="remove-all-config">Remove All</button>
+							<button class="secondary button" id="add-config">Add</button>
+						</div>					
+					</div>
+				</div>
+				<div id="instance-list-block" class="row instance-list-block">						
+				</div>
+			</div>
+		</div>
+		<div class="large-12 columns" id="integration-form" >
+			<div class="large-12 medium-12 columns edit-itemconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured board does not exist.</span></p>
+			</div>
+			<div class="large-12 medium-12 columns edit-itemconfig1-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured list does not exist.</span></p>
+			</div>
+			<div class="large-12 medium-12 columns edit-roomconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured space does not exist.</span></p>
+			</div>
+			<div class="authenticted-block">Authenticated to Trello as: <span id="authenticted-to"></span></div>
+			<div class="no-configuration-block" style="display:none">There are no boards available in your Trello Account. Please create boards in your account and configure<br></div>
+			<form name="form" id="form" method="post">
+				<div class="row app-config-block">
+					<div class="large-12 columns first sub-config-block">
+						<h3 class="heading-01">Trello configuration</h3>
+						<div class="large-10 medium-10 columns items-config" style="float:left;">
+							<div class="large-3 medium-3 columns"><label class="label-config">Trello Board</label></div>						
+							<div class="large-6 medium-6 columns dropdown-config text left">
+								<select name="boards"  id="boards" class="dropdown"><option value="0" hidden>Select</option></select><span class="has-tip tip-right" id="tooltip" title="Boards, for which you'd receive notifications"
+								data-tooltip><img class="tool-tip"></span>
+								<div class="settings-loading" style="display: none;"></div>
+							</div>	
+						</div>						
+					</div>
+					
+					<div class="large-12 columns events-config">
+						<div class="large-12 medium-12 columns events">
+							<label>Notifications: Boards</label>
+							<div class="events-sub" id="board-list-notifications">
+							    <div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="list-created" value="list-created"><label for="list-created">List created</label>
+									</div>
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="board-renamed" value="board-renamed"><label for="board-renamed">Board renamed</label>
+									</div>	
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="member-added" value="member-addedto-board"><label for="member-added">Member added to board</label>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="large-12 medium-12 columns">&nbsp;</div>
+						<div class="large-12 columns first sub-config-block" id="board-lists" style="display:none">
+							<div class="large-10 medium-10 columns items-config" >
+								<div class="large-3 medium-3 columns ">
+									<label class="label-config">List (optional)</label>
+								</div>
+								<div class="large-6 medium-6 dropdown-config columns text left ">
+									<select id="lists" name="lists" class="dropdown">
+										<option value='0'>Select List</option>  
+									</select>
+									<span class="has-tip tip-right" id="tooltip" title="List, for which you'd receive notifications" data-tooltip><img class="tool-tip"></span>
+									<div class="settings-loading" style="display: none;"></div>
+								</div>								
+							</div>
+						</div>
+						<div class="large-12 medium-12 columns events">
+							<label>Notifications: Lists</label>
+							<div class="events-sub" id="list-notifications">
+							    <div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+										<input type="checkbox" name="subnotifications" id="list-renamed" value="list-renamed"><label for="list-renamed">List renamed</label>
+									</div>
+									<div class="large-3 medium-4 columns checkbox">
+										<input type="checkbox" name="subnotifications" id="list-moved" value="list-movedto-otherboard"><label for="list-moved">List moved to other board</label>
+									</div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+										<input type="checkbox" name="subnotifications" value="list-archived-unarchived" id="list-archived"><label for="list-archived">List archived/unarchived</label>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="large-12 medium-12 columns">&nbsp;</div>
+						<div class="large-12 medium-12 columns events">	
+							<label>Notifications: Cards</label>
+							<div class="events-sub" id="cards-notifications">
+							    <div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="card-created" value="card-created"><label for="card-created">Card created </label>
+									</div>
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="card-renamed" value="card-renamed"><label for="card-renamed">Card renamed</label>
+									</div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="comment-added" value="comment-addedto-card"><label for="comment-added">Comment added to card</label>
+									</div>	
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="attachment-added" value="attachment-addedto-card"><label for="attachment-added">Attachment added to card</label>
+									</div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="description-changed" value="description-changed"><label for="description-changed">Description changed</label>
+									</div>
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="due-date-changed" value="duedate-changed"><label for="due-date-changed">Due date changed</label>
+									</div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="label-changed" value="label-changed"><label for="label-changed">Label changed</label>
+									</div>	
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="card-member-added" value="member-addedto-card"><label for="card-member-added">Member added to card</label>
+									</div>
+								</div>	
+								<div class="large-12 medium-12 columns">
+									<div class="large-6 medium-6 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="card-archived" value="card-archived"><label for="card-archived">Card archived/unarchived</label>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="large-12 medium-12 columns">&nbsp;</div>
+						<div class="large-12 medium-12 columns events">
+							<label>Notifications: Checklists</label>
+							<div class="events-sub" id="checklists-notifications">
+							    <div class="large-12 medium-12 columns">
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="checklist-card-created" value="checklist-card-created"><label for="checklist-card-created">Checklist added to card</label>
+									</div>
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="checklist-cardmoved" value="checklist-item-created"><label for="checklist-cardmoved">Checklist item created</label>
+									</div>
+								</div>
+								<div class="large-12 medium-12 columns">								
+									<div class="large-3 medium-4 columns checkbox">
+									<input type="checkbox" name="subnotifications" id="checklist-card-renamed" value="checklist-renamed"><label for="checklist-card-renamed">Checklist renamed</label>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row spark-config-block">
+					<div class="large-10 medium-10 columns">
+						<h3 class="heading-01">Cisco Spark configuration</h3>
+						<div class="large-8 columns sub-config-block">
+							<div class="large-2 medium-3 columns small-mobile">
+								<label class="room-name">Space</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<select name="room" id="rooms" class="custom-select">
+								<option value='0'>Please Select</option></select><span class="has-tip tip-right rooms-tooltip" id="tooltip" title="Space in which you'd like to receive notifications. Ensure newly created spaces have at least one message in it for it to show up here." data-tooltip><img class="tool-tip"></span>
+							</div>
+							<div class="rooms-loading" style="display: none;"></div>
+						</div>
+						<div class="large-8 columns sub-config-block left">
+							<div class="large-2 medium-3 columns small-mobile config-optional">
+								<label>Configuration name (optional)</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<input type="text" name="displayName" id="displayName" class="integration-name"	value="">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row integration-config-block">
+					<div class="large-5 medium-5 columns" >&nbsp;</div>
+					<div class="large-4 medium-4 columns left" >
+						<button class="button" id="cancel-button">Cancel</button>
+						<button class="button secondary text" id="submit-button">Add Integration</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</body>
+</html> 

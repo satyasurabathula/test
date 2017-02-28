@@ -1,0 +1,853 @@
+<!DOCTYPE html> 
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mailchimp Integration to Cisco Spark</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.css" rel="stylesheet" type="text/css"> 
+<link href="https://d24wgzqqegxpap.cloudfront.net/api/css/collab-ui-min.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/styles.css" rel="stylesheet" type="text/css">
+<link href="https://183.82.99.100:8443/CiscoWebcontent/css/select2.min.css" rel="stylesheet" />  
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.3/foundation.min.js"></script> 
+<script type="text/javascript" src="https://d24wgzqqegxpap.cloudfront.net/api/js/porthole.min.js"></script>
+<script type="text/javascript" src="https://183.82.99.100:8443/CiscoWebcontent/js/scriptsRoom.js"></script>
+<script src="https://183.82.99.100:8443/CiscoWebcontent/js/select2.min.js"></script>
+<script>
+	integration_app_icon_url="https://d24wgzqqegxpap.cloudfront.net/api/images/mailchimp/mailchimp.png";
+	clientAppRevokeMsg = '<p class="integrationAuthMsg"><span class="info-icon" title=""> &nbsp;</span><span>We are facing difficulty while accessing your MailChimp account. Please click on Add to authorize.</span></p>';
+	var list_modified=false;
+	var list_id_old="";
+	var selected_list_id="0";
+	var application_id="8";
+	var instanceUuid="";
+	var WebHookId = "";
+	var room_id = "";
+    var list_ld = "";
+	var eventsMatchFlag = true;
+	var configFlag = false;
+	var saveJsonString = "";
+	var selectedRoomName = "";
+	var action_url = "";
+	var actionType = "";
+	appName = "MailChimp";
+	postMessageToSpark = "MailChimp "+postMessageToSpark;
+	updateMessageToSpark= "MailChimp "+updateMessageToSpark;
+	removeMessageToSpark= "MailChimp "+removeMessageToSpark;
+	$( document ).ready(function() {
+		application_auth_details_url="/api/applications/"+application_id;
+		token_url="/api/integrations/"+integration_id+"/authDetails";
+		save_spark_token_url="/api/clients/tokens";
+		save_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		get_app_token_url="/api/integrations/"+integration_id+"/appTokens";
+		configuration_settings_url="/api/integrations/"+integration_id+"/uiSettings";
+		save_configuration_settings_url="/api/integrations/instances";
+		update_configuration_settings_url="/api/integrations/instances/";
+		delete_instance_url="/api/integrations/instances/";
+		list_integration_instances_url="/api/integrations/instances";		
+		removeall_integration_instances_url="/api/integrations/instances";	
+		delete_spark_token_url="/api/clients/tokens";
+		delete_integration_token_url="/api/integrations/"+integration_id+"/appTokens";
+			
+		action=action.toLowerCase();
+		if(action=="connect") {
+			$("#integrations-block").hide();
+			$('#integration-form').hide();
+			validateIntegrationAppToken();
+		} else if(action=="disconnect") {
+			formAction="disconnect";
+			removeAllIntegrationInstances(formAction);
+		} else {
+			var app_code = gup(window.top.location.href, 'code');
+			if(app_code!="") {
+				generateIntegrationAppToken(app_code); 
+				console.log("code..." + app_code);
+			} else {
+				validateIntegrationAppTokenDB();
+			}
+		}
+		$("#rooms").select2();
+		$("#mailchimp-icon").attr("src", integration_app_icon_url);
+		$(".spark-icon").attr("src", spark_icon_url);
+		$("#mailchimp #lists").on('change',function(){
+			list_modified=true;
+		});			
+		$("#mailchimp #submit-button").click(function (e){
+			e.preventDefault();
+			saveMailchimpInstance();
+		});
+		$("#cancel-button").click(function (e){
+			e.preventDefault();			
+			$('#integration-form').hide();
+			$('#integrations-block').show();
+			listIntegrations();
+			resize();
+		});
+		$('#mailchimp #add-config').click(function(e){
+			e.preventDefault();	
+			formAction="add";
+			if(listResultData.length != 0){
+				$("#submit-button").text("Add");
+				if(isClientAppTokenValid){
+					loadMailchimpForm();
+					loadRooms();
+				}else{
+					setIntegrationAppAuthDetails(integration_id);
+				}
+			}
+			else{
+				$("#submit-button").text("Add Integration");				
+				validateIntegrationAppToken();				
+			}
+		});
+		$('#cancel-remove-integration').click(function(e){
+			e.preventDefault();
+			$('#remove-integration-popup').foundation('close');
+		});
+		$("#mailchimp #lists").on('change',function(){
+			if($('#lists').val()!=0&&formAction=="update")
+				$(".edit-itemconfig-info").hide();
+		});	
+		$("#mailchimp #rooms").on('change',function(){
+			if($('#rooms').val()!=0&&formAction=="update")
+				$(".edit-roomconfig-info").hide();
+		});	
+		$(document).on("click", ".same-config-yes" , function(e) {
+			console.log("yes clicked!!!!!!!!!!!!!");
+			saveMailchimpInstanceConfig();
+		});
+		$(document).on("click", ".same-config-no" , function(e) {
+			console.log("no clicked!!!!!!!!!!!!!");
+			$('#same-configuration').foundation('close');
+		});
+		$(document).on("click", "#mailchimp #instance-list-block .edit-config" , function(e) {
+			formAction="update";
+			list_modified=false;
+			room_modified=false;
+			events_modified=false;
+			$("#submit-button").text("Save");
+			instanceId=this.id;
+			$.each(listResultData,function(index,value){
+				if(value["instanceId"]==instanceId) {
+					instanceData=value;				
+				}
+			});			
+			selected_room_id=instanceData.channelId;
+			var config=JSON.parse(instanceData.configJson);			
+			selected_list_id=config.list_id;			
+			loadMailchimpForm();
+			$('#displayName').val(config.displayName);
+			resize();		
+			instanceUuid = instanceData.instanceUuid;
+			WebHookId = config.WebHookId;
+			list_id_old = config.list_id;
+			room_id_old = instanceData.channelId;
+			var events = config.events;		
+			if($.isArray(events)) {
+				$.each(events,function(index,value){
+					$("input[type=checkbox][value="+value+"]").prop("checked",true);
+				});
+			} else {
+				$("input[type=checkbox][value="+events+"]").prop("checked",true);
+			}			
+		});		
+    });
+	function validateIntegrationAppToken() {
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					//loadMailchimpForm();
+					validateIntegrationAppspecificToken();
+				} else {
+					setIntegrationAppAuthDetails(integration_id);
+				}
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function validateIntegrationAppspecificToken(){
+		$.ajax({
+			url: configuration_settings_url+"?userId="+user_id,
+			async: true,
+			success: function(result){
+					if(result["integrationSpecificSettings"]["isValidToken"]==false && result["integrationSpecificSettings"]["isValidToken"] != undefined){
+						isClientAppTokenValid = false;
+						console.log("***** validateIntegrationsApp token  with validateClientToken *********");
+						if(listResultData.length==0){
+							setIntegrationAppAuthDetails(integration_id);
+						}
+					}else{
+						loadMailchimpForm();
+					}
+				},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+				   alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function setIntegrationAppAuthDetails() {
+		var OAUTHURL    =   '';
+		var CLIENTID    =   "";
+		var TYPE        =   'code';		
+		$.ajax({url: application_auth_details_url,
+			async:true,
+			success: function(result){
+				CLIENTID = result.clientId;
+				OAUTHURL = result.authorizationEndpoint;				
+				OAUTHURL=OAUTHURL+'?client_id='+CLIENTID+'&response_type='+TYPE+'&redirect_uri=https://183.82.99.100:444/CiscoWebcontent/dev/mailchimp.html';				
+				loginWithAuthDetails(OAUTHURL);	
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});		
+	}
+	function loginWithAuthDetails(oauthURL) {
+		isRedirect=true;
+		if(isRedirect) {
+			if(formAction=="add") {
+				window.top.location.href = oauthURL;
+			} else {
+				var authReqMsg ="";
+				authReqMsg+='<hr class="instance-hr"><div class="large-12 medium-12 columns instance-background">';
+				authReqMsg+='<div class="no-config-msg">You are not authorized to this integration. Click Add to continue.</div></div>';
+				$('#integrations-block').show();
+				$("#instance-list-block").html(authReqMsg);
+			}			
+			console.log('You are using a mobile device!' + oauthURL);
+		} else {
+			var win = window.open(oauthURL, "windowname1", 'width=600, height=600'); 
+			if(win){ 
+			}else{
+				alert(popblockedMessage); 
+				return false;
+			}
+			var pollTimer = window.setInterval(function() { 
+				try {
+					if (win.document.URL.indexOf("code") != -1) {
+						window.clearInterval(pollTimer);
+						var url =   win.document.URL;
+						accessCode =   gup(url, 'code');
+						tokenType = gup(url, 'token_type');
+						expiresIn = gup(url, 'expires_in');
+						win.close();
+						getIntegrationAppTokenDetails(accessCode);
+					}
+				} catch(e) {
+					console.log('error while getting authorization code..'+e);
+				}
+			}, 100);
+		}
+    }
+	function getIntegrationAppTokenDetails(code) {
+		var jsonObject={};
+		jsonObject["integrationId"] = integration_id;
+		jsonObject["authSettings"] = {};
+		jsonObject["authSettings"]["code"] = code;
+		jsonString=JSON.stringify(jsonObject);
+		$.ajax({url: token_url,
+			async:true,
+			type: "POST",
+			data: jsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){
+				var tokenDetails=result["integrationSpecificAuthDetails"]["authDetailsResponse"];
+				var jsonObject={};
+				jsonObject["applicationId"] = application_id;
+				jsonObject["integrationId"] = integration_id;
+				jsonObject["accessToken"] = tokenDetails.access_token;
+				jsonObject["expires"] = tokenDetails.expires_in;
+				var jsonString=JSON.stringify(jsonObject);
+				saveIntegrationAppToken(jsonString);
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function saveIntegrationAppToken(jsonData){
+		$.ajax({url: save_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "POST",
+			data: jsonData,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){
+				connectIntegration();
+				if(isClientAppTokenValid == false) getListInstances();
+				else loadMailchimpForm();
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});	
+	}
+	function generateIntegrationAppToken(app_code) {
+		$.ajax({url: get_app_token_url+"?userId="+user_id,
+			async:true,
+			type: "get",
+			success: function(result){
+				if(result.tokenResult.tokenId) {
+					//listIntegrations();
+					validateSpecificAppToken(app_code);
+				} else {
+					getIntegrationAppTokenDetails(app_code); 
+				}
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }else{
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function validateSpecificAppToken(app_code){
+		$.ajax({
+			url: configuration_settings_url+"?userId="+user_id,
+			async: true,
+			success: function(result){
+					if(result["integrationSpecificSettings"]["isValidToken"]==false && result["integrationSpecificSettings"]["isValidToken"] != undefined){
+						isClientAppTokenValid = false;
+						console.log("***** validateIntegrationsApp token  with validateSpecificAppToken() *********");
+						if(app_code!="") getIntegrationAppTokenDetails(app_code);
+						else setIntegrationAppAuthDetails(integration_id);						
+						console.log("isClientAppTokenValid ***** "+isClientAppTokenValid);
+					}else{
+						isClientAppTokenValid = true;
+						listIntegrations();
+					}
+				},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+				   alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+	}
+	function getListInstances(){
+		$.ajax({url: list_integration_instances_url+"?userId="+user_id+"&integrationId="+integration_id,
+			async:true,
+			success: function(result){
+			 instanceList = result;
+			 if(instanceList.length != 0 && instanceList.message == undefined){
+				 console.log("instanceList in getListInstances()"+instanceList.length);
+				 listIntegrations();
+			 }else{
+				 loadMailchimpForm();
+			 }
+			},
+			error: function(xmlHttpRequest,error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   }
+			}
+		});
+	}
+	function getAuthUser(){
+	if(ui_settings["integrationSpecificSettings"]["userDetails"] != undefined && ui_settings["integrationSpecificSettings"]["userDetails"] != null)
+		authenticated_user=ui_settings["integrationSpecificSettings"]["userDetails"].username;
+	}
+	function loadMailchimpForm(){
+	console.log("Load Form entered...");
+		$("#form").trigger("reset");
+		$('#integrations-block').hide();
+		$("#integration-form").show();
+		$(".edit-roomconfig-info").hide();
+		$(".edit-itemconfig-info").hide();
+		$(".rooms-loading").show();
+		resize();
+		if(ui_settings=="") { 
+			$(".settings-loading").show();
+			$.ajax({
+				url: configuration_settings_url+"?userId="+user_id,
+				async: true,
+				success: function(result){
+					$(".settings-loading").hide();
+					ui_settings=result;	
+					console.log("getting uisetting");
+					loadConfigurationSettings();
+					loadRooms();
+				},
+				 error: function(xmlHttpRequest, error) {
+				   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+					   return;
+				   } else{
+						$('#integration-form').html("We've experienced some difficulty. Try again.");
+						$('#integration-form').hide();
+						alert("We've experienced some difficulty. Try again.");
+					}
+				}
+			});
+			getAllSparkRooms();
+		}else{
+			loadConfigurationSettings();
+		}			
+    } 	
+	function loadConfigurationSettings() {
+		if(ui_settings["sparkRoomSettings"] != null && (ui_settings["integrationSpecificSettings"]["ListDetails"] != undefined && ui_settings["integrationSpecificSettings"]["ListDetails"] != null)){
+			var roomFlag=false;
+			var itemFlag=false;
+			var lists = ui_settings["integrationSpecificSettings"]["ListDetails"]["lists"];
+			console.log("Lists "+lists.length);
+			var rooms = "";
+			var authorizedto=ui_settings["integrationSpecificSettings"]["userDetails"].username;
+			console.log("authorizedto"+authorizedto);
+			if(authorizedto!=""&&authorizedto!=undefined) {
+				$('#authenticted-to').html(authorizedto);
+				$(".authenticted-block").css("display","block");
+			}			
+			$('#lists')[0].options.length = 1;
+			var isListsExists = false;
+			$.each(lists, function(id,obj){
+				isListsExists = true;
+				$("#lists").append($('<option>').text(obj.name).attr('value',obj.id));
+				if(formAction=="update" && selected_list_id==obj.id && itemFlag==false){
+					selected_list_id=obj.id;
+					itemFlag=true;
+				}
+			}); 	
+			if(formAction=="update" && itemFlag==false){
+				selected_list_id = "0";
+				$(".edit-itemconfig-info").show();
+			}
+			$('#rooms')[0].options.length = 1;
+			rooms = ui_settings["sparkRoomSettings"].items;
+			if(allRooms.length !=0) {
+				rooms = allRooms;
+				$(".rooms-loading").hide();
+			}
+			//if(!isMobile)$("#rooms").customselect("destroy");
+			$.each(rooms, function(id,obj){
+				$("#rooms").append($('<option>').text(obj.title).attr('value',obj.id));
+				if(formAction=="update" && selected_room_id==obj.id&&roomFlag==false){
+					selected_room_id=obj.id;
+					roomFlag=true;
+				}
+			});
+			if(formAction=="update" && roomFlag==false){
+				selected_room_id = "0";
+				$(".edit-roomconfig-info").show();
+			}
+			$("#rooms").val(selected_room_id);
+			$("#lists").val(selected_list_id);
+			$('#select2-rooms-container').html($("#rooms option:selected").text());
+			selected_room_id="0";
+			selected_list_id="0";
+			if(!isListsExists) {					
+				$('.no-configuration-block').show();
+				$('#form').hide();
+			}				
+			//if(!isMobile)$("#rooms").customselect();
+		}else{
+			alert("We've experienced some difficulty. Try again.");
+		}
+	}
+	function validateConfiguration(instance, notifications){
+	    console.log("validating Configuration....");
+		var configData = JSON.parse(instance.configJson);
+		var configEvents = configData.events;
+		var notificationsLength = notifications.length;
+		var matchCount = 0;
+		configFlag = false;
+		eventsMatchFlag = true;
+		if(instance.channelId==room_id&&configData.list_id==list_ld){
+			console.log("matched...room and list_id");
+			configFlag = true;
+		}
+		if($.isArray(notifications)){
+			console.log("configEvents..." + configEvents +"length...." + configEvents.length);
+			if($.isArray(configEvents)){
+				for (var p in notifications) {
+					if(configEvents[p] != notifications[p]){
+						eventsMatchFlag = false;
+						console.log("Match: " + configEvents[p] + "!=" + notifications[p]);
+					}else {
+						matchCount = matchCount +1;
+					   console.log("Match: " + configEvents[p] + "==" + notifications[p]);
+					}
+					console.log("match count..." + matchCount + "configEvents.length..." + configEvents.length);
+					if(matchCount==configEvents.length&&notificationsLength==configEvents.length){
+						eventsMatchFlag = true;
+						return false;
+					}else{
+						eventsMatchFlag = false;
+					}
+				}
+			}else{
+			    console.log("not matched...configEvents");
+				eventsMatchFlag = false;
+			}
+		}else{
+			if($.isArray(configEvents)){
+			    eventsMatchFlag = false;
+				console.log("not matched...array" + eventsMatchFlag);
+			}else{
+			  if(configEvents==notifications){
+				eventsMatchFlag = true;
+				 console.log("matched single.." + eventsMatchFlag);
+			  }else{
+				eventsMatchFlag = false;
+			  }
+			}
+		}
+	}
+    function saveMailchimpInstance() {
+		var res = $('form').serializeObject();
+	    selectedRoomName=$("#rooms option:selected").text();
+		var selectedListName = $('#lists option:selected').text();
+		room_id = $("#rooms option:selected").val();
+		var list_name = ($("#lists option:selected").text()).toLowerCase().replace(" ","-");
+		list_ld = $("#lists").val();
+		var jsonData = {};
+		jsonData["channelId"] = $("#rooms option:selected").val();
+		jsonData["integrationId"] = integration_id;
+		jsonData["status"] = "ACTIVE";
+		jsonData["userId"] = user_id;			
+		postAddMessageToRoom(room_id,appName);
+		 if(formAction=="update") {
+			jsonData["instanceUuid"] = instanceUuid;
+			jsonData["instance_id"] = instanceId;			
+			if(room_id!=room_id_old) {
+				room_modified=true;
+				jsonData["messageToSpark"] = updateMessageToSpark;
+			} else {
+				room_modified=false;
+			}
+			if(list_id_old!=list_ld) {
+				list_modified=true;
+			} else {
+				list_modified=false;
+			}
+			var config = JSON.parse(instanceData.configJson);
+			var configEvents = config.events;
+			var events = res.events;
+			var eventsLength ='0';
+			if($.isArray(configEvents)) {
+			 var configLength = configEvents.length;
+			 var matchedLength=0;
+				$.each(configEvents,function(index,configValue){
+					if($.isArray(events)){
+					eventsLength = events.length;
+						$.each(events,function(index,Value){
+							if(configValue==Value){
+								matchedLength = matchedLength + 1;
+							}
+						});
+					}
+				});
+				if((configLength==matchedLength)&&(configLength==eventsLength)){
+					events_modified=false;
+				}else{
+					events_modified=true;
+				}
+			} else {
+				var configLength = 1;
+				var matchedLength = 0;
+				var singlematchedLength = 0;
+				if($.isArray(events)){
+					eventsLength = events.length;
+						events_modified=true;
+				} else if(configEvents==events){
+					singlematchedLength = 1;
+					if(configLength==singlematchedLength){
+						events_modified=false;
+					}else{
+						events_modified=true;
+					}
+				}else {
+					events_modified=true;
+				}
+			}			
+			jsonData["room_modified"] = room_modified;
+			jsonData["configJson"]={};
+			jsonData["configJson"]["events"]= res.events;
+			jsonData["configJson"]["WebHookId"]= WebHookId;
+			jsonData["configJson"]["old_listId"] = list_id_old;
+			jsonData["configJson"]["list_modified"] = list_modified;
+			jsonData["configJson"]["events_modified"] = events_modified;
+			action_url = update_configuration_settings_url+instanceId;
+			actionType = "PUT";
+			$('.loading-first-block').html('Please wait while your Integration is being updated');			
+		 } else{
+		    action_url = save_configuration_settings_url;
+			actionType = "POST";
+			jsonData["configJson"]={};
+			jsonData["messageToSpark"] = postMessageToSpark;
+			jsonData["configJson"]["events"]= res.events;	
+			$('.loading-first-block').html('Please wait while your Integration is being set up');
+		}		
+		jsonData["configJson"]["list_id"]= $("#lists").val();
+		jsonData["configJson"]["list_name"]= selectedListName;
+		jsonData["configJson"]["displayName"]= res.displayName;			
+		saveJsonString = JSON.stringify(jsonData);
+		var length = $("input:checkbox[name=events]:checked").length;
+		var notifications = res.events;
+		if(listResultData.length != 0 && length!=0){
+			$.each(listResultData, function(i, instance) {
+				if(formAction=="update"&&instance.instanceId!=instanceId){
+				 validateConfiguration(instance, notifications);
+				 if(eventsMatchFlag==true&&configFlag==true){
+					 console.log("eventsMatchFlag in cond.." + eventsMatchFlag + " config Flag.." + configFlag);
+						return false;
+					}
+				}
+				if(formAction!="update"){
+				 validateConfiguration(instance, notifications);
+				  if(eventsMatchFlag==true&&configFlag==true){
+					 console.log("eventsMatchFlag in cond.." + eventsMatchFlag + " config Flag.." + configFlag);
+						return false;
+					}
+				}
+			});
+		}
+		if($('#lists').val()==0){
+			alert("Please select Lists");
+		} else if($('#rooms').val()==0 || $('#rooms').val()==null){
+			alert("Please select Space");
+		} else if(length==0) {
+			alert("Please select atleast one Event");
+		}else if(listResultData.length != 0 && eventsMatchFlag==true && configFlag==true){
+			if(formAction=="update"){
+				$.each(listResultData, function(i, instance) {
+					if(formAction=="update"&&instance.instanceId==instanceId){
+					 validateConfiguration(instance, notifications);
+					}
+				});
+				if(room_modified || list_modified || !eventsMatchFlag)
+					$('#same-configuration').foundation('open');
+				else
+					saveMailchimpInstanceConfig();
+			}else{
+				$('#same-configuration').foundation('open');
+			}
+		} else { 
+			saveMailchimpInstanceConfig();
+		}
+	}
+	function saveMailchimpInstanceConfig(){
+		console.log("saveMailchimpInstanceConfig!!!!!!!!!");
+		$('#same-configuration').foundation('close');
+		$('.loading-second-block').html('Selected Space is '+ selectedRoomName);
+		$('#loading-block').foundation('open');
+		$.ajax({url: action_url+"?userId="+user_id,
+			async:true,
+			type: actionType,
+			data: saveJsonString,
+			contentType: "application/json",
+			dataType: "json",
+			success: function(result){	
+				$('#success-integration').foundation('open');
+				$('#loading-block').foundation('close');					
+			},
+			error: function(xmlHttpRequest, error) {
+			   if(xmlHttpRequest.readyState == 0 || xmlHttpRequest.status == 0) {
+				   return;
+			   } else{
+					$('#loading-block').foundation('close');
+					alert("We've experienced some difficulty. Try again.");
+				}
+			}
+		});
+		$('.loading-first-block').html('Please wait just a moment while your app is loading');
+		$('.loading-second-block').html('');
+	}
+</script>
+</head>
+<body>
+	<div class="integration-app" id="mailchimp"><br>
+		<div class="rows large-12 medium-12 columns warning-msg" style="display:none;"></div>
+		<div class="rows large-12 medium-12 columns client-app-warning" style="display:none;"></div>
+		<div id="loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait just a moment while your app is loading</div>
+				<div class="loading-second-block">name and space name</div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="list-loading-block" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="loading"><img class="spark-icon" src="" alt="....."></div>
+			<div class="loading-div-background">
+				<div class="loading-first-block">Please wait...</div>
+				<div class="loading-second-block"></div>
+				<div class="loading-bar"><div class="loading-background"></div>	</div>
+			</div>
+		</div>
+		<div id="success-integration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="success-loading">
+				<img class="spark-icon" src="" alt=".....">
+			</div>
+			<div class="well-done-text">Well done!</div>
+			<div class="success-integration-first-block">Your configuration has been set up and is ready to use.</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<div class="success-integration-second-block">
+					<!--<button class="button" id="room-button">Go to
+						Content Testing Room</button>-->
+					<button class="secondary button" id="done-button">Done</button>
+				</div>
+			</div>
+		</div>
+		<div class="reveal" id="remove-integration-popup" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="large-12 columns desktop-block">			    
+				<div class="row">
+					<div class="large-2 medium-2 columns"><img alt="" id="mailchimp-icon" src=""/></div>
+					<div class="large-6 medium-6 columns" style="float:left;">
+						<label id="displayName-label"></label>
+						<label id="addedon-label"></label>
+					</div>
+				</div><br>
+				<div class="msg-labels"><label id="remove-msg"></label> <label id="remove-auth"></label></div>				
+				<button class="close-button" data-close aria-label="Close modal" type="button">
+					<span aria-hidden="true">&times;</span>
+				</button><br><br>
+				<button id="remove-integration-btn" class="button remove-integration-btn" style="float:right">Remove</button>
+			</div>
+			<div class="large-12 columns mobile-block">	
+				<div class="msg-labels"><label id="remove-msg-mobile"></label> <label id="remove-auth-mobile"></label></div>				
+				<div class="option-buttons remove-integration-buttons">
+					<label class="remove-popup-cancel"> 
+						<a href="#" id="cancel-remove-integration">cancel</a>
+					</label>
+					<label class="remove-popup-remove">
+						<a href="#" id="remove-integration-btn-mobile" class="remove-integration-btn">remove</a>
+					</label>
+				</div>
+			</div>
+		</div>
+		<div id="same-configuration" class="reveal" data-reveal data-options="closeOnClick:false;closeOnEsc:false;">
+			<div class="same-config-text">An identical configuration to the same Cisco Spark space you have selected already exists. Are you sure you want to configure one more?</div>
+			<div class="large-5 medium-5 columns buttons-block">
+				<button class="secondary button same-config-yes">Yes</button>
+				<button class="secondary button same-config-no">No</button>
+			</div>
+		</div>
+		<div class="integrations" id="integrations-block">
+			<div id="instance-loading-block" class="row instance-loading-block" style="display: none;">
+				<div class="instances-loading">&nbsp;</div>
+				<div class="instances-loading-text"></div>
+			</div>
+			<div id="home" class="home">
+				<div class="row add-config-block">
+					<div class="large-12 medium-12 columns">							
+						<div class="large-6 medium-6 columns config-name"><label>MailChimp configurations</label></div>
+						<div class="large-6 medium-6 columns">
+							<button class="remove-all-btn" data-open="remove-integration-popup" id="remove-all-config">Remove All</button>
+							<button class="secondary button" id="add-config">Add</button>
+						</div>					
+					</div>
+				</div>
+				<div id="instance-list-block" class="row instance-list-block"></div>
+			</div>
+		</div>
+		<div class="large-12 columns" id="integration-form">
+			<div class="large-12 medium-12 columns edit-itemconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured list does not exist.</span></p>
+			</div>
+			<div class="large-12 medium-12 columns edit-roomconfig-info" style="display:none">
+				<p><span class="info-icon" title=""> &nbsp;</span><span>Previously configured space does not exist.</span></p>
+			</div>
+			<div class="authenticted-block">Authenticated to MailChimp as: <span id="authenticted-to"></span></div>
+			<div class="no-configuration-block" style="display:none">There are no lists available in your mailchimp Account. Please create lists in your account and configure.<br></div>
+			<form name="form" id="form" method="post">
+				<div class="row app-config-block">
+					<div class="large-12 columns first sub-config-block">
+						<h3 class="heading-01">MailChimp configuration</h3>
+						<div class="large-10 medium-10 columns items-config" style="float:left;">
+							<div class="large-3 medium-3 columns "><label class="label-config">MailChimp Lists</label></div>						
+							<div class="large-6 medium-6 columns dropdown-config text left">
+								<select name="lists"  id="lists" class="dropdown"><option value="0" hidden>Select</option></select><span class="has-tip tip-right" id="tooltip" title="Lists, for which you'd receive notifications" data-tooltip><img class="tool-tip"></span>
+							<div class="settings-loading" style="display: none;"></div>	
+							</div>	
+							
+						</div>	
+					</div>
+					<div class="large-12 columns events-config">
+						<div class="large-12 medium-12 columns events">
+							<label>Notifications</label>
+							<div id="events" class="events-sub">
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" class="events" id="subscribe" name="events" value="subscribe"/>
+									<label for="subscribe">Subscribes</label></div>
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" class="events" id="unsubscribe" name="events" value="unsubscribe"/>
+									<label for="unsubscribe">Unsubscribes</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" class="events" id="profile" name="events" value="profile"/>
+									<label for="profile">Profile Updates</label></div>	
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" class="events" id="upemail" name="events" value="upemail"/>
+									<label for="upemail">Email Address Changes</label></div>
+								</div>
+								<div class="large-12 medium-12 columns">
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" class="events" id="cleaned" name="events" value="cleaned"/>
+									<label for="cleaned">Cleaned Emails </label></div>
+									<div class="large-3 medium-3 columns checkbox"><input type="checkbox" class="events" id="campaign" name="events" value="campaign"/>
+									<label for="campaign">Campaign Sending status</label></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row spark-config-block">
+					<div class="large-10 medium-10 columns">
+						<h3 class="heading-01">Cisco Spark configuration</h3>
+						<div class="large-8 columns sub-config-block">
+							<div class="large-2 medium-3 columns small-mobile">
+								<label>Space</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<select name="room" id="rooms" class="custom-select">
+								<option value='0'>Please Select</option></select><span class="has-tip tip-right" id="tooltip" title="Space in which you'd like to receive notifications. Ensure newly created spaces have at least one message in it for it to show up here."
+									data-tooltip><img class="tool-tip"></span>
+							</div>
+							<div class="rooms-loading" style="display: none;"></div>
+						</div>
+						<div class="large-8 columns sub-config-block left">
+							<div class="large-2 medium-3 columns small-mobile config-optional">
+								<label>Configuration name (optional)</label>
+							</div>
+							<div class="large-5 medium-5 columns text left input-small-mobile">
+								<input type="text" name="displayName" id="displayName" class="integration-name"	value="">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row integration-config-block">
+					<div class="large-5 medium-5 columns" >&nbsp;</div>
+					<div class="large-4 medium-4 columns left" >
+						<button class="button" id="cancel-button">Cancel</button>
+						<button class="button secondary text" id="submit-button">Add Integration</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</body>
+</html>
